@@ -7,8 +7,8 @@ Window {
     width: 350
     height: 250
 
-    // 保存的位置
     x: settings.value("x", 300)
+
     y: settings.value("y", 200)
 
     visible: true
@@ -17,56 +17,36 @@ Window {
 
     color: "transparent"
 
-    Rectangle {
+    FolderWindow {
 
         anchors.fill: parent
 
-        radius: 30
+        folderName: "开发工具"
+    }
 
-        color: "#CC202020"
+    MouseArea {
 
-        border.width: 1
+        anchors.fill: parent
 
-        border.color: "#40ffffff"
+        property real startX
 
-        // 标题
+        property real startY
 
-        Text {
+        onPressed: {
+            startX = mouse.x;
 
-            anchors.centerIn: parent
-
-            text: "开发工具"
-
-            color: "white"
-
-            font.pixelSize: 28
+            startY = mouse.y;
         }
 
-        MouseArea {
+        onPositionChanged: {
+            if (mouse.buttons & Qt.LeftButton) {
+                root.x += mouse.x - startX;
 
-            anchors.fill: parent
+                root.y += mouse.y - startY;
 
-            property real startX
-            property real startY
+                settings.setValue("x", root.x);
 
-            onPressed: {
-                startX = mouse.x;
-
-                startY = mouse.y;
-            }
-
-            onPositionChanged: {
-                if (mouse.buttons & Qt.LeftButton) {
-                    root.x += mouse.x - startX;
-
-                    root.y += mouse.y - startY;
-
-                    // 保存位置
-
-                    settings.setValue("x", root.x);
-
-                    settings.setValue("y", root.y);
-                }
+                settings.setValue("y", root.y);
             }
         }
     }

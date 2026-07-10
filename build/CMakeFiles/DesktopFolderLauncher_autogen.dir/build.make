@@ -70,7 +70,7 @@ CMakeFiles/DesktopFolderLauncher_autogen: DesktopFolderLauncher_autogen/timestam
 DesktopFolderLauncher_autogen/timestamp: D:/Qt/6.11.1/msvc2022_64/bin/moc.exe
 DesktopFolderLauncher_autogen/timestamp: CMakeFiles/DesktopFolderLauncher_autogen.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=E:\GithubProject\DeskFolder\DesktopFolderLauncherQt\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic MOC and UIC for target DesktopFolderLauncher"
-	D:\CMake\bin\cmake.exe -E cmake_autogen E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/build/CMakeFiles/DesktopFolderLauncher_autogen.dir/AutogenInfo.json ""
+	D:\CMake\bin\cmake.exe -E cmake_autogen E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/build/CMakeFiles/DesktopFolderLauncher_autogen.dir/AutogenInfo.json Debug
 	D:\CMake\bin\cmake.exe -E touch E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/build/DesktopFolderLauncher_autogen/timestamp
 
 CMakeFiles/DesktopFolderLauncher_autogen.dir/codegen:

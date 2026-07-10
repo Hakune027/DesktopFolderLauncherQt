@@ -99,10 +99,10 @@ clean: CMakeFiles/DesktopFolderLauncher_autogen.dir/clean
 # Target rules for target CMakeFiles/DesktopFolderLauncher.dir
 
 # All Build rule for target.
-CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_copy_qml.dir/all
-CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_autogen.dir/all
-CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_copy_res.dir/all
 CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/generate_qmlls_build_ini_file.dir/all
+CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_copy_qml.dir/all
+CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_copy_res.dir/all
+CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_autogen.dir/all
 CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_qmlimportscan.dir/all
 CMakeFiles/DesktopFolderLauncher.dir/all: CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DesktopFolderLauncher.dir\build.make CMakeFiles/DesktopFolderLauncher.dir/depend
@@ -654,9 +654,9 @@ CMakeFiles/DesktopFolderLauncher_qmlimportscan.dir/clean:
 # Target rules for target CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir
 
 # All Build rule for target.
+CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all: CMakeFiles/generate_qmlls_build_ini_file.dir/all
 CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all: CMakeFiles/DesktopFolderLauncher_copy_qml.dir/all
 CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all: CMakeFiles/DesktopFolderLauncher_copy_res.dir/all
-CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all: CMakeFiles/generate_qmlls_build_ini_file.dir/all
 CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/all: CMakeFiles/DesktopFolderLauncher_qmlimportscan.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DesktopFolderLauncher_autogen_timestamp_deps.dir\build.make CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DesktopFolderLauncher_autogen_timestamp_deps.dir\build.make CMakeFiles/DesktopFolderLauncher_autogen_timestamp_deps.dir/build
