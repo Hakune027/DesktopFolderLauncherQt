@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  ".qt/rcc/qrc_DesktopFolderLauncher_raw_qml_0.cpp"
+  ".qt/rcc/qrc_qmake_DesktopFolderLauncher.cpp"
+  ".rcc/qmlcache/DesktopFolderLauncher_qml/Main_qml.cpp"
+  ".rcc/qmlcache/DesktopFolderLauncher_qml/Main_qml.cpp.aotstats"
+  ".rcc/qmlcache/DesktopFolderLauncher_qmlcache_loader.cpp"
+  "CMakeFiles/DesktopFolderLauncher.dir/DesktopFolderLauncher_autogen/mocs_compilation.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/DesktopFolderLauncher_autogen/mocs_compilation.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.qt/rcc/qrc_DesktopFolderLauncher_raw_qml_0.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.qt/rcc/qrc_DesktopFolderLauncher_raw_qml_0.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.qt/rcc/qrc_qmake_DesktopFolderLauncher.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.qt/rcc/qrc_qmake_DesktopFolderLauncher.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.rcc/qmlcache/DesktopFolderLauncher_qml/Main_qml.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.rcc/qmlcache/DesktopFolderLauncher_qml/Main_qml.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.rcc/qmlcache/DesktopFolderLauncher_qmlcache_loader.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/build/.rcc/qmlcache/DesktopFolderLauncher_qmlcache_loader.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/desktopfolderlauncher_qmltyperegistrations.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/desktopfolderlauncher_qmltyperegistrations.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/main.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/main.cpp.obj.d"
+  "CMakeFiles/DesktopFolderLauncher.dir/src/SettingsManager.cpp.obj"
+  "CMakeFiles/DesktopFolderLauncher.dir/src/SettingsManager.cpp.obj.d"
+  "DesktopFolderLauncher.exe"
+  "DesktopFolderLauncher.exe.manifest"
+  "DesktopFolderLauncher.pdb"
+  "DesktopFolderLauncher/DesktopFolderLauncher.qmltypes"
+  "CMakeFiles/DesktopFolderLauncher_autogen.dir/AutogenUsed.txt"
+  "CMakeFiles/DesktopFolderLauncher_autogen.dir/ParseCache.txt"
+  "DesktopFolderLauncher_autogen"
+  "desktopfolderlauncher_qmltyperegistrations.cpp"
+  "libDesktopFolderLauncher.dll.a"
+  "meta_types/DesktopFolderLauncher_json_file_list.txt"
+  "meta_types/DesktopFolderLauncher_json_file_list.txt.timestamp"
+  "meta_types/qt6desktopfolderlauncher_metatypes.json"
+  "meta_types/qt6desktopfolderlauncher_metatypes.json.gen"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/DesktopFolderLauncher.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/DesktopFolderLauncher/">
+    <file alias="qml/Main.qml">E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/qml/Main.qml</file>
+  </qresource>
+</RCC>
+

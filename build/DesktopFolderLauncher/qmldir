@@ -1,0 +1,6 @@
+module DesktopFolderLauncher
+typeinfo DesktopFolderLauncher.qmltypes
+prefer :/DesktopFolderLauncher/
+Main 1.0 qml/Main.qml
+depends QtQuick
+

@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="/DesktopFolderLauncher">E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/build/DesktopFolderLauncher</file>
+
+  </qresource>
+</RCC>
