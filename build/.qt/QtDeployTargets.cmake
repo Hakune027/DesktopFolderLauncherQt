@@ -1,3 +1,0 @@
-set(__QT_DEPLOY_TARGET_DesktopFolderLauncher_FILE E:/GithubProject/DeskFolder/DesktopFolderLauncherQt/build/DesktopFolderLauncher.exe)
-set(__QT_DEPLOY_TARGET_DesktopFolderLauncher_TYPE EXECUTABLE)
-set(__QT_DEPLOY_TARGET_DesktopFolderLauncher_RUNTIME_DLLS D:/Qt/6.11.1/msvc2022_64/bin/Qt6Quickd.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6OpenGLd.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6Guid.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6QmlMetad.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6QmlModelsd.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6QmlWorkerScriptd.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6Qmld.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6Networkd.dll;D:/Qt/6.11.1/msvc2022_64/bin/Qt6Cored.dll)
