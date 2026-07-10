@@ -24,6 +24,10 @@ public:
 
     QString icon() const;
 
+    // 新增
+    Q_INVOKABLE
+    void open();
+
 private:
     QString m_name;
 

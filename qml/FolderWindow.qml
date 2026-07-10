@@ -57,7 +57,7 @@ Rectangle {
 
                 delegate: AppIcon {
 
-                    name: modelData.name
+                    item: modelData
                 }
             }
         }

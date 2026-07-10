@@ -1,10 +1,14 @@
 #include "AppItem.h"
 
+#include <QDesktopServices>
+#include <QUrl>
+
 AppItem::AppItem(
     QString name,
     QString path,
     QString icon,
     QObject *parent)
+
     : QObject(parent),
       m_name(name),
       m_path(path),
@@ -25,4 +29,10 @@ QString AppItem::path() const
 QString AppItem::icon() const
 {
     return m_icon;
+}
+
+void AppItem::open()
+{
+    QDesktopServices::openUrl(
+        QUrl::fromLocalFile(m_path));
 }

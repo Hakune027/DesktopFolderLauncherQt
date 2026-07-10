@@ -6,7 +6,8 @@ Item {
     width: 80
     height: 100
 
-    property string name: "应用"
+    // 接收 C++ AppItem
+    property var item
 
     Column {
 
@@ -17,7 +18,6 @@ Item {
         Rectangle {
 
             width: 64
-
             height: 64
 
             radius: 16
@@ -29,7 +29,7 @@ Item {
                 width: 64
                 height: 64
 
-                source: modelData.icon
+                source: icon.item ? icon.item.icon : ""
 
                 fillMode: Image.PreserveAspectFit
             }
@@ -39,7 +39,7 @@ Item {
 
             width: 80
 
-            text: icon.name
+            text: icon.item ? icon.item.name : ""
 
             horizontalAlignment: Text.AlignHCenter
 
@@ -51,7 +51,19 @@ Item {
         }
     }
 
-    // 鼠标悬浮动画
+    MouseArea {
+        id: mouseArea
+
+        anchors.fill: parent
+
+        hoverEnabled: true
+
+        onClicked: {
+            if (icon.item) {
+                icon.item.open();
+            }
+        }
+    }
 
     scale: mouseArea.containsMouse ? 1.12 : 1
 
@@ -61,13 +73,5 @@ Item {
 
             duration: 150
         }
-    }
-
-    MouseArea {
-        id: mouseArea
-
-        anchors.fill: parent
-
-        hoverEnabled: true
     }
 }

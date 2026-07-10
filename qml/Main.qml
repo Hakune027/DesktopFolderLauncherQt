@@ -46,7 +46,11 @@ Window {
     }
 
     MouseArea {
-        anchors.fill: parent
+        id: dragArea
+
+        width: parent.width
+
+        height: 35
 
         property real startX
         property real startY
