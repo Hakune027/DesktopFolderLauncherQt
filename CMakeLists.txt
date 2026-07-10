@@ -5,7 +5,7 @@ project(
     VERSION 1.0
     LANGUAGES CXX
 )
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -15,6 +15,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     Gui
     Qml
     Quick
+    Widgets
 )
 
 
@@ -26,8 +27,25 @@ qt_add_executable(
 
     main.cpp
 
+
     src/SettingsManager.cpp
     src/SettingsManager.h
+
+
+    src/AppItem.cpp
+    src/AppItem.h
+
+
+    src/FileManager.cpp
+    src/FileManager.h
+
+
+    src/IconProvider.cpp
+    src/IconProvider.h
+
+
+    src/DropHandler.cpp
+    src/DropHandler.h
 )
 
 
@@ -39,7 +57,12 @@ qt_add_qml_module(
     VERSION 1.0
 
     QML_FILES
+
         qml/Main.qml
+
+        qml/FolderWindow.qml
+
+        qml/AppIcon.qml
 )
 
 
@@ -51,4 +74,5 @@ target_link_libraries(
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    Qt6::Widgets
 )

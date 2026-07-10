@@ -1,15 +1,24 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickWindow>
 
 #include "src/SettingsManager.h"
+#include "src/FileManager.h"
+#include "src/DropHandler.h"
 
 int main(int argc, char *argv[])
 {
 
     QGuiApplication app(argc, argv);
 
+    QQuickWindow::setDefaultAlphaBuffer(true);
+
     SettingsManager settings;
+
+    FileManager fileManager;
+
+    DropHandler *dropHandler = new DropHandler();
 
     QQmlApplicationEngine engine;
 
@@ -18,12 +27,41 @@ int main(int argc, char *argv[])
             "settings",
             &settings);
 
+    engine.rootContext()
+        ->setContextProperty(
+            "fileManager",
+            &fileManager);
+
+    QObject::connect(
+        dropHandler,
+        &DropHandler::fileDropped,
+        &fileManager,
+        &FileManager::addFile);
+
     engine.loadFromModule(
         "DesktopFolderLauncher",
         "Main");
 
     if (engine.rootObjects().isEmpty())
+    {
         return -1;
+    }
 
-    return app.exec();
+    // Register native OLE drag-and-drop on the frameless window
+    QQuickWindow *window =
+        qobject_cast<QQuickWindow *>(
+            engine.rootObjects().first());
+
+    if (window)
+    {
+        dropHandler->registerWindow(window);
+    }
+
+    int result = app.exec();
+
+    // Cleanup: revoke OLE drop target before destroying
+    dropHandler->unregisterWindow();
+    delete dropHandler;
+
+    return result;
 }

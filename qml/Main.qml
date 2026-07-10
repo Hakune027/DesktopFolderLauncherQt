@@ -24,21 +24,39 @@ Window {
         folderName: "开发工具"
     }
 
-    MouseArea {
+    DropArea {
 
         anchors.fill: parent
 
-        property real startX
+        keys: ["text/uri-list"]
 
+        onEntered: function (drag) {
+            console.log("enter");
+
+            drag.accept();
+        }
+
+        onDropped: function (drop) {
+            console.log("Dropped:", drop.urls);
+
+            for (let url of drop.urls) {
+                fileManager.addFile(url);
+            }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+
+        property real startX
         property real startY
 
-        onPressed: {
+        onPressed: function (mouse) {
             startX = mouse.x;
-
             startY = mouse.y;
         }
 
-        onPositionChanged: {
+        onPositionChanged: function (mouse) {
             if (mouse.buttons & Qt.LeftButton) {
                 root.x += mouse.x - startX;
 

@@ -53,28 +53,11 @@ Rectangle {
 
             Repeater {
 
-                model: 3
+                model: fileManager.items
 
-                Rectangle {
+                delegate: AppIcon {
 
-                    width: 70
-
-                    height: 70
-
-                    radius: 18
-
-                    color: "#40ffffff"
-
-                    Text {
-
-                        anchors.centerIn: parent
-
-                        text: "APP"
-
-                        color: "white"
-
-                        font.pixelSize: 14
-                    }
+                    name: modelData.name
                 }
             }
         }
