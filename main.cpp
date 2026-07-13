@@ -18,7 +18,9 @@ int main(int argc, char *argv[])
 
     FileManager fileManager;
 
-    DropHandler *dropHandler = new DropHandler();
+    fileManager.load();
+
+    DropHandler *dropHandler = new DropHandler(&app);
 
     QQmlApplicationEngine engine;
 
@@ -60,8 +62,8 @@ int main(int argc, char *argv[])
     int result = app.exec();
 
     // Cleanup: revoke OLE drop target before destroying
+
     dropHandler->unregisterWindow();
-    delete dropHandler;
 
     return result;
 }

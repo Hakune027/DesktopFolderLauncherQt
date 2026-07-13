@@ -24,11 +24,24 @@ public:
     Q_INVOKABLE
     void addFile(QString path);
 
+    Q_INVOKABLE
+    void removeFile(int index);
+
+    Q_INVOKABLE
+    void openLocation(QString path);
+
+    Q_INVOKABLE
+    void load();
+
 signals:
 
     void itemsChanged();
 
 private:
+    void save();
+
+    QString dataPath();
+
     QList<QObject *> m_items;
 };
 

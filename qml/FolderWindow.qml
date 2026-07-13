@@ -13,18 +13,10 @@ Rectangle {
     color: "#CC202020"
 
     border.width: 1
+
     border.color: "#40ffffff"
 
-    // 阴影效果（后续升级真正DropShadow）
-
-    Rectangle {
-
-        anchors.fill: parent
-
-        radius: folder.radius
-
-        color: "transparent"
-    }
+    // 内容区域
 
     Column {
 
@@ -46,6 +38,7 @@ Rectangle {
         }
 
         Grid {
+            id: iconGrid
 
             columns: 3
 
@@ -58,6 +51,8 @@ Rectangle {
                 delegate: AppIcon {
 
                     item: modelData
+
+                    itemIndex: index
                 }
             }
         }

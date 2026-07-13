@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 
 Item {
     id: icon
@@ -6,8 +7,11 @@ Item {
     width: 80
     height: 100
 
-    // 接收 C++ AppItem
+    // C++ AppItem对象
+
     property var item
+
+    property int itemIndex: -1
 
     Column {
 
@@ -26,8 +30,7 @@ Item {
 
             Image {
 
-                width: 64
-                height: 64
+                anchors.fill: parent
 
                 source: icon.item ? icon.item.icon : ""
 
@@ -56,11 +59,16 @@ Item {
 
         anchors.fill: parent
 
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+
         hoverEnabled: true
 
-        onClicked: {
-            if (icon.item) {
-                icon.item.open();
+        onClicked: function (mouse) {
+            if (mouse.button === Qt.RightButton) {
+                menu.popup();
+            } else {
+                if (icon.item)
+                    icon.item.open();
             }
         }
     }
@@ -72,6 +80,40 @@ Item {
         NumberAnimation {
 
             duration: 150
+        }
+    }
+
+    Menu {
+        id: menu
+
+        MenuItem {
+
+            text: "打开"
+
+            onTriggered: {
+                if (icon.item)
+                    icon.item.open();
+            }
+        }
+
+        MenuItem {
+
+            text: "打开文件位置"
+
+            onTriggered: {
+                fileManager.openLocation(icon.item.path);
+            }
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+
+            text: "删除"
+
+            onTriggered: {
+                fileManager.removeFile(icon.itemIndex);
+            }
         }
     }
 }

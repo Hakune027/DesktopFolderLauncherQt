@@ -16,6 +16,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     Qml
     Quick
     Widgets
+    QuickControls2
 )
 
 
@@ -75,4 +76,5 @@ target_link_libraries(
     Qt6::Qml
     Qt6::Quick
     Qt6::Widgets
+    Qt6::QuickControls2
 )
