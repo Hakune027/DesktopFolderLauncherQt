@@ -13,6 +13,7 @@ AppItem::AppItem(
       m_name(name),
       m_path(path),
       m_icon(icon)
+
 {
 }
 
@@ -31,8 +32,42 @@ QString AppItem::icon() const
     return m_icon;
 }
 
+int AppItem::x() const
+{
+    return m_x;
+}
+
+int AppItem::y() const
+{
+    return m_y;
+}
+
+void AppItem::setX(int value)
+{
+
+    if (m_x == value)
+        return;
+
+    m_x = value;
+
+    emit positionChanged();
+}
+
+void AppItem::setY(int value)
+{
+
+    if (m_y == value)
+        return;
+
+    m_y = value;
+
+    emit positionChanged();
+}
+
 void AppItem::open()
 {
+
     QDesktopServices::openUrl(
-        QUrl::fromLocalFile(m_path));
+        QUrl::fromLocalFile(
+            m_path));
 }

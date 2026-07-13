@@ -7,113 +7,66 @@ Item {
     width: 80
     height: 100
 
-    // C++ AppItem对象
-
     property var item
-
     property int itemIndex: -1
 
-    Column {
+    signal requestMove(int index, int x, int y)
 
-        anchors.centerIn: parent
+    x: item ? item.x : 0
+    y: item ? item.y : 0
 
-        spacing: 8
+    // 拖动时置于顶层
+    z: dragArea.drag.active ? 999 : 0
 
-        Rectangle {
+    Rectangle {
+        width: 64
+        height: 64
+        radius: 16
+        color: "#40ffffff"
 
-            width: 64
-            height: 64
-
-            radius: 16
-
-            color: "#40ffffff"
-
-            Image {
-
-                anchors.fill: parent
-
-                source: icon.item ? icon.item.icon : ""
-
-                fillMode: Image.PreserveAspectFit
-            }
+        // 拖动时半透明
+        opacity: dragArea.drag.active ? 0.7 : 1.0
+        Behavior on opacity {
+            NumberAnimation { duration: 150 }
         }
 
-        Text {
-
-            width: 80
-
-            text: icon.item ? icon.item.name : ""
-
-            horizontalAlignment: Text.AlignHCenter
-
-            color: "white"
-
-            font.pixelSize: 14
-
-            elide: Text.ElideRight
+        Image {
+            anchors.fill: parent
+            source: item ? item.icon : ""
+            fillMode: Image.PreserveAspectFit
         }
+    }
+
+    Text {
+        y: 68
+        width: 80
+        text: item ? item.name : ""
+        color: "white"
+        horizontalAlignment: Text.AlignHCenter
     }
 
     MouseArea {
-        id: mouseArea
-
+        id: dragArea
         anchors.fill: parent
+        drag.target: icon
 
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onReleased: {
+            let gridSize = 100;
+            let nx = Math.round(icon.x / gridSize) * gridSize;
+            let ny = Math.round(icon.y / gridSize) * gridSize;
 
-        hoverEnabled: true
+            // 先更新 model
+            icon.requestMove(icon.itemIndex, nx, ny);
 
-        onClicked: function (mouse) {
-            if (mouse.button === Qt.RightButton) {
-                menu.popup();
-            } else {
-                if (icon.item)
-                    icon.item.open();
-            }
+            // 修复被 drag.target 破坏的绑定
+            icon.x = Qt.binding(function() { return icon.item ? icon.item.x : 0; });
+            icon.y = Qt.binding(function() { return icon.item ? icon.item.y : 0; });
         }
     }
 
-    scale: mouseArea.containsMouse ? 1.12 : 1
-
+    // 悬停放大 / 拖拽放大
+    scale: dragArea.drag.active ? 1.15 : (dragArea.containsMouse ? 1.1 : 1.0)
     Behavior on scale {
-
-        NumberAnimation {
-
-            duration: 150
-        }
-    }
-
-    Menu {
-        id: menu
-
-        MenuItem {
-
-            text: "打开"
-
-            onTriggered: {
-                if (icon.item)
-                    icon.item.open();
-            }
-        }
-
-        MenuItem {
-
-            text: "打开文件位置"
-
-            onTriggered: {
-                fileManager.openLocation(icon.item.path);
-            }
-        }
-
-        MenuSeparator {}
-
-        MenuItem {
-
-            text: "删除"
-
-            onTriggered: {
-                fileManager.removeFile(icon.itemIndex);
-            }
-        }
+        NumberAnimation { duration: 150 }
     }
 }

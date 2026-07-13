@@ -5,11 +5,37 @@
 
 class AppItem : public QObject
 {
+
     Q_OBJECT
 
-    Q_PROPERTY(QString name READ name CONSTANT)
-    Q_PROPERTY(QString path READ path CONSTANT)
-    Q_PROPERTY(QString icon READ icon CONSTANT)
+    Q_PROPERTY(
+        QString name
+            READ name
+                CONSTANT)
+
+    Q_PROPERTY(
+        QString path
+            READ path
+                CONSTANT)
+
+    Q_PROPERTY(
+        QString icon
+            READ icon
+                CONSTANT)
+
+    // 新增位置属性
+
+    Q_PROPERTY(
+        int x
+            READ x
+                WRITE setX
+                    NOTIFY positionChanged)
+
+    Q_PROPERTY(
+        int y
+            READ y
+                WRITE setY
+                    NOTIFY positionChanged)
 
 public:
     explicit AppItem(
@@ -24,9 +50,22 @@ public:
 
     QString icon() const;
 
-    // 新增
+    int x() const;
+
+    int y() const;
+
+    void setX(
+        int value);
+
+    void setY(
+        int value);
+
     Q_INVOKABLE
     void open();
+
+signals:
+
+    void positionChanged();
 
 private:
     QString m_name;
@@ -34,6 +73,10 @@ private:
     QString m_path;
 
     QString m_icon;
+
+    int m_x = 0;
+
+    int m_y = 0;
 };
 
 #endif

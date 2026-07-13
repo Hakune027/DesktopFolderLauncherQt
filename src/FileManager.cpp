@@ -11,6 +11,7 @@
 
 #include <QFile>
 #include <QDir>
+#include <QPoint>
 
 #include <QStandardPaths>
 
@@ -76,12 +77,44 @@ void FileManager::addFile(QString path)
     QString iconPath =
         IconProvider::getIcon(path);
 
+    // 自动找一个空闲网格位置
+    const int gridSize = 100;
+    const int maxCols = 3;
+    int newX = 0, newY = 0;
+    bool found = false;
+
+    for (int row = 0; !found; row++) {
+        for (int col = 0; col < maxCols; col++) {
+            int gx = col * gridSize;
+            int gy = row * gridSize;
+            bool occupied = false;
+            for (QObject *obj : m_items) {
+                AppItem *existing =
+                    qobject_cast<AppItem *>(obj);
+                if (existing &&
+                    existing->x() == gx &&
+                    existing->y() == gy) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) {
+                newX = gx;
+                newY = gy;
+                found = true;
+                break;
+            }
+        }
+    }
+
     auto item =
         new AppItem(
             info.baseName(),
             path,
             iconPath,
             this);
+    item->setX(newX);
+    item->setY(newY);
 
     m_items.append(item);
 
@@ -114,6 +147,12 @@ void FileManager::save()
 
         json["icon"] =
             item->icon();
+
+        json["x"] =
+            item->x();
+
+        json["y"] =
+            item->y();
 
         array.append(json);
     }
@@ -154,6 +193,11 @@ void FileManager::load()
     QJsonArray array =
         doc.array();
 
+    // 跟踪已占用位置，解决冲突
+    QList<QPoint> occupied;
+    const int gridSize = 100;
+    const int maxCols = 3;
+
     for (auto value : array)
     {
 
@@ -171,17 +215,45 @@ void FileManager::load()
         QString icon =
             IconProvider::getIcon(path);
 
+        int x = obj["x"].toInt();
+        int y = obj["y"].toInt();
+
+        // 检测位置冲突，冲突时自动找空位
+        QPoint pos(x, y);
+        if (occupied.contains(pos)) {
+            bool found = false;
+            for (int row = 0; !found; row++) {
+                for (int col = 0; col < maxCols; col++) {
+                    QPoint candidate(col * gridSize,
+                                     row * gridSize);
+                    if (!occupied.contains(candidate)) {
+                        x = candidate.x();
+                        y = candidate.y();
+                        occupied.append(candidate);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            occupied.append(pos);
+        }
+
         auto item =
             new AppItem(
                 info.baseName(),
                 path,
                 icon,
                 this);
-
+        item->setX(x);
+        item->setY(y);
         m_items.append(item);
     }
 
     emit itemsChanged();
+
+    // 如果加载时有位置冲突被修正，持久化保存
+    save();
 }
 
 void FileManager::removeFile(int index)
@@ -217,4 +289,32 @@ void FileManager::openLocation(QString path)
             info.absolutePath())
 
     );
+}
+
+void FileManager::moveItem(
+    int from,
+    int to)
+{
+
+    if (from < 0 ||
+        to < 0 ||
+        from >= m_items.size() ||
+        to >= m_items.size())
+    {
+        return;
+    }
+
+    if (from == to)
+        return;
+
+    QObject *item =
+        m_items.takeAt(from);
+
+    m_items.insert(
+        to,
+        item);
+
+    save();
+
+    emit itemsChanged();
 }
