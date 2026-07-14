@@ -73,16 +73,35 @@ jobs:
           Copy-Item README.md $package -ErrorAction SilentlyContinue
           Copy-Item LICENSE $package -ErrorAction SilentlyContinue
 
-      - name: Create archive
-        id: archive
+      - name: Build Windows installer
+        id: installer
         shell: pwsh
         run: |
           $tag = '${{ inputs.version }}'
-          $archiveName = "DeskFolder-$tag-windows-x64.zip"
-          $archivePath = Join-Path $PWD $archiveName
-          Compress-Archive -Path 'package\DeskFolder' -DestinationPath $archivePath -CompressionLevel Optimal
-          "path=$archivePath" >> $env:GITHUB_OUTPUT
-          "name=$archiveName" >> $env:GITHUB_OUTPUT
+          $version = $tag.TrimStart('v')
+          $outputName = "DeskFolder-$tag-windows-x64-Setup"
+          $outputDir = Join-Path $PWD 'installer-output'
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (-not (Test-Path $iscc)) {
+            throw 'Inno Setup 6 安装失败'
+          }
+
+          & $iscc "packaging\DeskFolder.iss" "/DMyAppVersion=$version" "/DMyOutputDir=$outputDir" "/DMyOutputName=$outputName"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup 编译失败，exit code: $LASTEXITCODE"
+          }
+          $outputPath = Join-Path $outputDir "$outputName.exe"
+          if (-not (Test-Path $outputPath) -or (Get-Item $outputPath).Length -lt 1MB) {
+            throw '生成的安装程序无效'
+          }
+
+          "path=$outputPath" >> $env:GITHUB_OUTPUT
+          "name=$outputName.exe" >> $env:GITHUB_OUTPUT
 
       - name: Create or update GitHub Release
         shell: pwsh
@@ -90,11 +109,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = '${{ inputs.version }}'
-          $asset = '${{ steps.archive.outputs.path }}'
+          $asset = '${{ steps.installer.outputs.path }}'
           $title = "DeskFolder $tag"
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) {
+
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $encodedTag = [Uri]::EscapeDataString($tag)
+          $releaseUrl = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$encodedTag"
+          $exists = $false
+          try {
+            Invoke-RestMethod -Uri $releaseUrl -Headers $headers | Out-Null
+            $exists = $true
+          } catch {
+            if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
+          }
+
+          if ($exists) {
+            $oldAssets = gh release view $tag --json assets --jq '.assets[].name'
+            foreach ($oldAsset in $oldAssets) {
+              if ($oldAsset) {
+                gh release delete-asset $tag $oldAsset --yes
+                if ($LASTEXITCODE -ne 0) { throw "删除旧 Release 资源失败：$oldAsset" }
+              }
+            }
             gh release upload $tag $asset --clobber
+            gh release edit $tag --draft=false
           } else {
             $arguments = @('release', 'create', $tag, $asset, '--target', '${{ github.sha }}', '--title', $title, '--generate-notes')
             if ('${{ inputs.prerelease }}' -eq 'true') {
@@ -102,3 +144,8 @@ jobs:
             }
             gh @arguments
           }
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Release 发布失败，gh exit code: $LASTEXITCODE"
+          }
+          $releaseLink = gh release view $tag --json url --jq .url
+          "### Release 已发布：[$tag]($releaseLink)" >> $env:GITHUB_STEP_SUMMARY
