@@ -92,11 +92,8 @@ jobs:
           }
 
           $languageFile = Join-Path $PWD 'packaging\ChineseSimplified.isl'
-          Invoke-WebRequest `
-            'https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl' `
-            -OutFile $languageFile
           if (-not (Test-Path $languageFile) -or (Get-Item $languageFile).Length -lt 10KB) {
-            throw '下载 Inno Setup 简体中文语言文件失败'
+            throw '项目内缺少 Inno Setup 简体中文语言文件'
           }
 
           & $iscc "packaging\DeskFolder.iss" "/DMyAppVersion=$version" "/DMyOutputDir=$outputDir" "/DMyOutputName=$outputName"
