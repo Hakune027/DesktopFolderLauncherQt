@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 
 Item {
     id: appIcon
@@ -17,6 +18,7 @@ Item {
     property color labelColor: "white"
     property bool lightTheme: false
     property bool autoFillTransparentIcons: false
+    property string iconTone: "original"
     property bool indexedLayout: false
     property int layoutIndex: itemIndex
     property int layoutColumns: 1
@@ -85,16 +87,18 @@ Item {
             anchors.fill: parent
             radius: Math.max(10, width * 0.22)
             visible: appIcon.autoFillTransparentIcons
-                     && appIcon.item && appIcon.item.iconHasTransparency
-            color: appIcon.lightTheme ? "#24000000" : "#32ffffff"
-            border.width: 1
-            border.color: appIcon.lightTheme ? "#18000000" : "#20ffffff"
+            color: appIcon.lightTheme ? "#0d000000" : "#10ffffff"
+            border.width: Math.max(1, appIcon.iconSize / 48)
+            border.color: appIcon.lightTheme ? "#3d000000" : "#52ffffff"
             Behavior on color { ColorAnimation { duration: 140 } }
         }
 
         Image {
+            id: sourceIcon
             anchors.fill: parent
-            anchors.margins: Math.max(2, appIcon.iconSize * 0.04)
+            anchors.margins: appIcon.autoFillTransparentIcons
+                             ? Math.max(6, appIcon.iconSize * 0.13)
+                             : Math.max(2, appIcon.iconSize * 0.04)
             source: item ? item.icon : ""
             fillMode: Image.PreserveAspectFit
             smooth: true
@@ -102,6 +106,23 @@ Item {
             sourceSize.width: 256
             sourceSize.height: 256
         }
+
+        ShaderEffectSource {
+            id: toneSource
+            anchors.fill: sourceIcon
+            sourceItem: sourceIcon
+            hideSource: appIcon.iconTone !== "original"
+            live: true
+            smooth: true
+        }
+
+        MultiEffect {
+            anchors.fill: sourceIcon
+            source: toneSource
+            visible: appIcon.iconTone === "grayscale"
+            saturation: -1
+        }
+
     }
 
     Text {

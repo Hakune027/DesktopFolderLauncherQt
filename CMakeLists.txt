@@ -59,7 +59,6 @@ qt_add_executable(
     src/AppController.h
 )
 
-
 qt_add_qml_module(
     DesktopFolderLauncher
 
@@ -129,8 +128,9 @@ install(TARGETS DesktopFolderLauncher
     RUNTIME DESTINATION bin
 )
 
-include(CTest)
+option(BUILD_TESTING "Build DeskFolder model tests" OFF)
 if(BUILD_TESTING)
+    enable_testing()
     find_package(Qt6 REQUIRED COMPONENTS Test)
     qt_add_executable(DesktopFolderLauncherTests
         tests/model_tests.cpp

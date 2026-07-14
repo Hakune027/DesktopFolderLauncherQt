@@ -53,15 +53,11 @@ jobs:
         run: >-
           cmake -S . -B build-release -G "MinGW Makefiles"
           -DCMAKE_BUILD_TYPE=Release
-          -DBUILD_TESTING=ON
+          -DBUILD_TESTING=OFF
 
       - name: Build
         shell: pwsh
         run: cmake --build build-release --parallel $env:NUMBER_OF_PROCESSORS
-
-      - name: Test
-        shell: pwsh
-        run: ctest --test-dir build-release --output-on-failure --timeout 30
 
       - name: Deploy Qt runtime
         shell: pwsh

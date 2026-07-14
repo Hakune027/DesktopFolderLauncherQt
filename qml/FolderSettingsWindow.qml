@@ -739,6 +739,28 @@ Window {
                                 spacing: 4
 
                                 SettingRow {
+                                    title: "图标色调"
+                                    Layout.preferredHeight: 38
+                                    ComboBox {
+                                        id: iconToneCombo
+                                        Layout.preferredWidth: 126
+                                        model: ["原色", "灰度"]
+                                        currentIndex: {
+                                            if (!root.folderData) return 0;
+                                            const tones = ["original", "grayscale"];
+                                            return Math.max(0, tones.indexOf(root.folderData.iconTone));
+                                        }
+                                        onActivated: function(index) {
+                                            if (root.folderData) {
+                                                root.folderData.iconTone = ["original", "grayscale"][index];
+                                                root.persist();
+                                            }
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+
+                                SettingRow {
                                     title: "文件夹名称"
                                     Layout.preferredHeight: 32
                                     ToggleSwitch {
@@ -767,7 +789,7 @@ Window {
                                 }
 
                                 SettingRow {
-                                    title: "透明图标背景"
+                                    title: "图标外边缘"
                                     Layout.preferredHeight: 32
                                     ToggleSwitch {
                                         id: autoFillToggle
@@ -781,7 +803,7 @@ Window {
                                 }
 
                                 InfoCallout {
-                                    calloutText: "**说明**  ·  仅为透明区域较多的图标添加自适应底色。"
+                                    calloutText: "**图标色调**  ·  灰度模式统一图标色调并保留明暗层次。\n\n**图标外边缘**  ·  为所有图标添加统一圆角边缘，并将图标缩进显示在边缘内部。"
                                 }
                             }
                         }

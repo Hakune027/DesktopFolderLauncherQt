@@ -245,6 +245,7 @@ void FolderManager::load()
         folder->setShowFolderName(obj.value("showFolderName").toBool(true));
         folder->setShowIconNames(obj.value("showIconNames").toBool(true));
         folder->setAutoFillTransparentIcons(obj.value("autoFillTransparentIcons").toBool(false));
+        folder->setIconTone(obj.value("iconTone").toString("original"));
         folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
         folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
@@ -300,6 +301,7 @@ bool FolderManager::save()
         json["showFolderName"] = folder->showFolderName();
         json["showIconNames"] = folder->showIconNames();
         json["autoFillTransparentIcons"] = folder->autoFillTransparentIcons();
+        json["iconTone"] = folder->iconTone();
         json["allowIconGaps"] = folder->allowIconGaps();
         json["lockPosition"] = folder->lockPosition();
         json["frostedGlass"] = folder->frostedGlass();

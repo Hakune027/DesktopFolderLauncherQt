@@ -44,6 +44,7 @@ class FolderData : public QObject
     Q_PROPERTY(bool showFolderName READ showFolderName WRITE setShowFolderName NOTIFY appearanceChanged)
     Q_PROPERTY(bool showIconNames READ showIconNames WRITE setShowIconNames NOTIFY appearanceChanged)
     Q_PROPERTY(bool autoFillTransparentIcons READ autoFillTransparentIcons WRITE setAutoFillTransparentIcons NOTIFY appearanceChanged)
+    Q_PROPERTY(QString iconTone READ iconTone WRITE setIconTone NOTIFY appearanceChanged)
     Q_PROPERTY(bool allowIconGaps READ allowIconGaps WRITE setAllowIconGaps NOTIFY appearanceChanged)
     Q_PROPERTY(bool lockPosition READ lockPosition WRITE setLockPosition NOTIFY interactionChanged)
     Q_PROPERTY(bool frostedGlass READ frostedGlass WRITE setFrostedGlass NOTIFY appearanceChanged)
@@ -83,6 +84,7 @@ public:
     bool showFolderName() const;
     bool showIconNames() const;
     bool autoFillTransparentIcons() const;
+    QString iconTone() const;
     bool allowIconGaps() const;
     bool lockPosition() const;
     bool frostedGlass() const;
@@ -101,6 +103,7 @@ public:
     void setShowFolderName(bool value);
     void setShowIconNames(bool value);
     void setAutoFillTransparentIcons(bool value);
+    void setIconTone(const QString &value);
     void setAllowIconGaps(bool value);
     void setLockPosition(bool value);
     void setFrostedGlass(bool value);
@@ -164,6 +167,7 @@ private:
     bool m_showFolderName = true;
     bool m_showIconNames = true;
     bool m_autoFillTransparentIcons = false;
+    QString m_iconTone = QStringLiteral("original");
     bool m_allowIconGaps = true;
     bool m_lockPosition = false;
     bool m_frostedGlass = false;

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
+import QtQuick.Effects
 
 Window {
     id: root
@@ -428,6 +429,7 @@ Window {
                     lightTheme: root.lightTheme
                     autoFillTransparentIcons: root.folderData
                                               ? root.folderData.autoFillTransparentIcons : false
+                    iconTone: root.folderData ? root.folderData.iconTone : "original"
 
                     itemIndex: index
                     visible: !root.overflowEnabled || root.overflowExpanded
@@ -495,7 +497,7 @@ Window {
 
                 Repeater {
                     model: Math.min(4, Math.max(0, root.totalItems - root.compactVisibleCount))
-                    Image {
+                    Item {
                         required property int index
                         readonly property var overflowItem: root.folderData
                                                             ? root.folderData.items.itemAt(root.compactVisibleCount + index)
@@ -504,12 +506,30 @@ Window {
                         height: width
                         x: overflowCluster.width * (index % 2 === 0 ? 0.16 : 0.53)
                         y: overflowCluster.height * (index < 2 ? 0.16 : 0.53)
-                        source: overflowItem ? overflowItem.icon : ""
-                        sourceSize.width: 96
-                        sourceSize.height: 96
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        mipmap: true
+                        Image {
+                            id: overflowSourceIcon
+                            anchors.fill: parent
+                            source: parent.overflowItem ? parent.overflowItem.icon : ""
+                            sourceSize.width: 96
+                            sourceSize.height: 96
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            mipmap: true
+                        }
+                        ShaderEffectSource {
+                            id: overflowToneSource
+                            anchors.fill: overflowSourceIcon
+                            sourceItem: overflowSourceIcon
+                            hideSource: root.folderData && root.folderData.iconTone !== "original"
+                            live: true
+                            smooth: true
+                        }
+                        MultiEffect {
+                            anchors.fill: overflowSourceIcon
+                            source: overflowToneSource
+                            visible: root.folderData && root.folderData.iconTone === "grayscale"
+                            saturation: -1
+                        }
                     }
                 }
 
