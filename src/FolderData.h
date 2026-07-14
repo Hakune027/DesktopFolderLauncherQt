@@ -21,6 +21,7 @@ class FolderData : public QObject
                 CONSTANT)
 
     Q_PROPERTY(FileManager *items READ items CONSTANT)
+    Q_PROPERTY(int itemCount READ itemCount NOTIFY itemsChanged)
 
     Q_PROPERTY(
         int windowX
@@ -31,6 +32,20 @@ class FolderData : public QObject
         int windowY
             READ windowY
                 NOTIFY windowPositionChanged)
+
+    Q_PROPERTY(int cornerRadius READ cornerRadius WRITE setCornerRadius NOTIFY appearanceChanged)
+    Q_PROPERTY(QString backgroundStyle READ backgroundStyle WRITE setBackgroundStyle NOTIFY appearanceChanged)
+    Q_PROPERTY(qreal backgroundOpacity READ backgroundOpacity WRITE setBackgroundOpacity NOTIFY appearanceChanged)
+    Q_PROPERTY(int iconSize READ iconSize WRITE setIconSize NOTIFY appearanceChanged)
+    Q_PROPERTY(int iconSpacing READ iconSpacing WRITE setIconSpacing NOTIFY appearanceChanged)
+    Q_PROPERTY(int edgePadding READ edgePadding WRITE setEdgePadding NOTIFY appearanceChanged)
+    Q_PROPERTY(int gridColumns READ gridColumns WRITE setGridColumns NOTIFY appearanceChanged)
+    Q_PROPERTY(int gridRows READ gridRows WRITE setGridRows NOTIFY appearanceChanged)
+    Q_PROPERTY(bool showFolderName READ showFolderName WRITE setShowFolderName NOTIFY appearanceChanged)
+    Q_PROPERTY(bool showIconNames READ showIconNames WRITE setShowIconNames NOTIFY appearanceChanged)
+    Q_PROPERTY(bool showIconShadow READ showIconShadow WRITE setShowIconShadow NOTIFY appearanceChanged)
+    Q_PROPERTY(bool allowIconGaps READ allowIconGaps WRITE setAllowIconGaps NOTIFY appearanceChanged)
+    Q_PROPERTY(bool lockPosition READ lockPosition WRITE setLockPosition NOTIFY interactionChanged)
 
 public:
     explicit FolderData(
@@ -53,12 +68,41 @@ public:
 
     int windowY() const;
 
+    int cornerRadius() const;
+    QString backgroundStyle() const;
+    qreal backgroundOpacity() const;
+    int iconSize() const;
+    int iconSpacing() const;
+    int edgePadding() const;
+    int gridColumns() const;
+    int gridRows() const;
+    bool showFolderName() const;
+    bool showIconNames() const;
+    bool showIconShadow() const;
+    bool allowIconGaps() const;
+    bool lockPosition() const;
+
+    void setCornerRadius(int value);
+    void setBackgroundStyle(const QString &value);
+    void setBackgroundOpacity(qreal value);
+    void setIconSize(int value);
+    void setIconSpacing(int value);
+    void setEdgePadding(int value);
+    void setGridColumns(int value);
+    void setGridRows(int value);
+    void setShowFolderName(bool value);
+    void setShowIconNames(bool value);
+    void setShowIconShadow(bool value);
+    void setAllowIconGaps(bool value);
+    void setLockPosition(bool value);
+
     Q_INVOKABLE
     void setWindowPosition(
         int x,
         int y);
 
     FileManager *items() const;
+    int itemCount() const;
 
     Q_INVOKABLE
     void addFile(
@@ -83,7 +127,12 @@ signals:
 
     void windowPositionChanged();
 
+    void appearanceChanged();
+    void interactionChanged();
+
 private:
+    void updateGridLayout();
+
     QString m_name;
 
     QString m_folderId;
@@ -91,6 +140,20 @@ private:
     int m_windowX = -1;
 
     int m_windowY = -1;
+
+    int m_cornerRadius = 30;
+    QString m_backgroundStyle = QStringLiteral("black");
+    qreal m_backgroundOpacity = 0.8;
+    int m_iconSize = 64;
+    int m_iconSpacing = 36;
+    int m_edgePadding = 20;
+    int m_gridColumns = 3;
+    int m_gridRows = 2;
+    bool m_showFolderName = true;
+    bool m_showIconNames = true;
+    bool m_showIconShadow = true;
+    bool m_allowIconGaps = true;
+    bool m_lockPosition = false;
 
     FileManager *m_fileManager;
 };

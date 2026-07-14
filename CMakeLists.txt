@@ -72,6 +72,8 @@ qt_add_qml_module(
         qml/SettingsWindow.qml
 
         qml/FolderSpawner.qml
+
+        qml/FolderSettingsWindow.qml
 )
 
 
@@ -86,6 +88,9 @@ target_link_libraries(
     Qt6::Widgets
     Qt6::QuickControls2
 )
+if(WIN32)
+    target_link_libraries(DesktopFolderLauncher PRIVATE ole32 shell32)
+endif()
 
 install(TARGETS DesktopFolderLauncher
     RUNTIME DESTINATION bin
@@ -105,6 +110,9 @@ if(BUILD_TESTING)
     target_include_directories(DesktopFolderLauncherTests PRIVATE src)
     target_link_libraries(DesktopFolderLauncherTests PRIVATE
         Qt6::Core Qt6::Gui Qt6::Qml Qt6::Widgets Qt6::Test)
+    if(WIN32)
+        target_link_libraries(DesktopFolderLauncherTests PRIVATE ole32 shell32)
+    endif()
     add_test(NAME model_tests COMMAND DesktopFolderLauncherTests)
     set_tests_properties(model_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"

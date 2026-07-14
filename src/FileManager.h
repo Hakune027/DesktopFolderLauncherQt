@@ -19,6 +19,10 @@ public:
         const QString &folderId,
         const QString &folderName);
 
+    void setGridLayout(int horizontalGridSize, int verticalGridSize,
+                       int columns, int rows, bool reflow = true);
+    void setAllowGaps(bool value);
+
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
@@ -53,6 +57,8 @@ signals:
     void itemsChanged();
 
 private:
+    void compactItems();
+
     QString dataPath();
 
     QString legacyDataPath();
@@ -62,6 +68,11 @@ private:
     QString m_folderId;
 
     QString m_folderName;
+    int m_horizontalGridSize = 100;
+    int m_verticalGridSize = 100;
+    int m_gridColumns = 3;
+    int m_gridRows = 2;
+    bool m_allowGaps = true;
 };
 
 #endif

@@ -4,11 +4,20 @@ import QtQuick.Controls
 Item {
     id: appIcon
 
-    width: 80
-    height: 100
+    property int iconSize: 64
+    property int cellSize: 100
+    property int verticalCellSize: cellSize
+
+    width: iconSize
+    height: showName ? iconSize + Math.min(24, Math.max(0, verticalCellSize - iconSize)) : iconSize
 
     property var item
     property int itemIndex: -1
+    property bool showName: true
+    property color labelColor: "white"
+    property bool lightTheme: false
+    property bool showIconShadow: true
+    property real entryScale: 0.88
 
     // 信号: 由 FolderWindow 处理
     signal requestMove(int index, int x, int y)
@@ -19,34 +28,74 @@ Item {
     x: item ? item.x : 0
     y: item ? item.y : 0
 
+    opacity: 0
+
+    Component.onCompleted: enterAnimation.start()
+
+    ParallelAnimation {
+        id: enterAnimation
+        NumberAnimation { target: appIcon; property: "opacity"; to: 1; duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation { target: appIcon; property: "entryScale"; to: 1; duration: 260; easing.type: Easing.OutBack }
+    }
+
     // 拖动时置于顶层
     z: dragArea.drag.active ? 999 : 0
 
     Rectangle {
-        width: 64
-        height: 64
-        radius: 16
-        color: "#40ffffff"
+        anchors.fill: parent
+        anchors.margins: -6
+        radius: 14
+        color: dragArea.drag.active
+               ? (appIcon.lightTheme ? "#28000000" : "#35ffffff")
+               : dragArea.containsMouse
+                 ? (appIcon.lightTheme ? "#14000000" : "#20ffffff")
+                 : "transparent"
+        border.width: dragArea.drag.active ? 1 : 0
+        border.color: appIcon.lightTheme ? "#30000000" : "#45ffffff"
+        Behavior on color { ColorAnimation { duration: 130 } }
+        Behavior on border.width { NumberAnimation { duration: 100 } }
+    }
+
+    Rectangle {
+        width: appIcon.iconSize
+        height: appIcon.iconSize
+        radius: Math.max(10, appIcon.iconSize * 0.22)
+        color: appIcon.showIconShadow
+               ? (appIcon.lightTheme ? "#08000000" : "#10ffffff")
+               : "transparent"
+        Behavior on color { ColorAnimation { duration: 140 } }
 
         // 拖动时半透明
-        opacity: dragArea.drag.active ? 0.7 : 1.0
+        opacity: dragArea.drag.active ? 0.82 : 1.0
         Behavior on opacity {
             NumberAnimation { duration: 150 }
         }
 
         Image {
             anchors.fill: parent
+            anchors.margins: Math.max(2, appIcon.iconSize * 0.04)
             source: item ? item.icon : ""
             fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+            sourceSize.width: 256
+            sourceSize.height: 256
         }
     }
 
     Text {
-        y: 68
-        width: 80
+        y: appIcon.iconSize + 4
+        width: appIcon.width
         text: item ? item.name : ""
-        color: "white"
+        color: appIcon.labelColor
+        visible: appIcon.showName
+        font.pixelSize: 12
+        font.weight: dragArea.containsMouse ? Font.DemiBold : Font.Normal
+        elide: Text.ElideRight
+        maximumLineCount: 1
         horizontalAlignment: Text.AlignHCenter
+        opacity: dragArea.containsMouse ? 1.0 : 0.88
+        Behavior on opacity { NumberAnimation { duration: 120 } }
     }
 
     // 右键菜单
@@ -82,6 +131,7 @@ Item {
     MouseArea {
         id: dragArea
         anchors.fill: parent
+        hoverEnabled: true
         drag.target: appIcon
         drag.minimumX: 0
         drag.minimumY: 0
@@ -125,10 +175,10 @@ Item {
             }
 
             // ---- 拖拽结束: 吸附网格 & 触发排序 ----
-            let gridSize = 100;
+            let gridSize = appIcon.cellSize;
             let nx = Math.max(0, Math.min(Math.round(appIcon.x / gridSize) * gridSize,
                                           appIcon.parent.width - appIcon.width));
-            let ny = Math.max(0, Math.min(Math.round(appIcon.y / gridSize) * gridSize,
+            let ny = Math.max(0, Math.min(Math.round(appIcon.y / appIcon.verticalCellSize) * appIcon.verticalCellSize,
                                           appIcon.parent.height - appIcon.height));
 
             // 先更新 model
@@ -141,8 +191,8 @@ Item {
     }
 
     // 悬停放大 / 拖拽放大
-    scale: dragArea.drag.active ? 1.15 : (dragArea.containsMouse ? 1.1 : 1.0)
+    scale: entryScale * (dragArea.drag.active ? 1.10 : (dragArea.pressed ? 0.96 : (dragArea.containsMouse ? 1.04 : 1.0)))
     Behavior on scale {
-        NumberAnimation { duration: 150 }
+        NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
     }
 }

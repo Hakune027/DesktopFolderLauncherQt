@@ -82,41 +82,71 @@ Window {
 
         // 文件夹列表
         ListView {
-            width: 350
-            height: 200
+            width: 460
+            height: 240
 
             model: folderManager
 
             delegate: Rectangle {
-                width: 350
-                height: 50
+                width: 460
+                height: 88
                 color: "#eeeeee"
 
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: 15
-                    spacing: 15
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                    text: model.folderData.name
-                        font.pixelSize: 16
-                    }
+                FolderSettingsWindow {
+                    id: perFolderSettings
+                    folderData: model.folderData
+                    transientParent: root
                 }
 
-                // 删除按钮
-                Button {
+                Column {
+                    anchors.left: parent.left
                     anchors.right: parent.right
+                    anchors.leftMargin: 14
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
 
-                    text: "删除"
-                    width: 60
-                    height: 30
+                    Row {
+                        width: parent.width
+                        height: 34
+                        spacing: 8
 
-                    onClicked: {
-                        folderManager.removeFolder(index);
+                        Text {
+                            width: Math.max(80, parent.width - 142)
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: model.folderData.name
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+
+                        Button {
+                            text: "设置"
+                            width: 60
+                            height: 30
+                            onClicked: perFolderSettings.openForFolderWindow()
+                        }
+
+                        Button {
+                            text: "删除"
+                            width: 60
+                            height: 30
+                            onClicked: folderManager.removeFolder(index)
+                        }
+                    }
+
+                    Row {
+                        height: 34
+                        spacing: 16
+
+                        CheckBox {
+                            text: "锁定位置"
+                            checked: model.folderData.lockPosition
+                            onClicked: {
+                                model.folderData.lockPosition = checked;
+                                folderManager.save();
+                            }
+                        }
                     }
                 }
 

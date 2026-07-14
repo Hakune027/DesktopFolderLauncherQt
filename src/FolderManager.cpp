@@ -230,6 +230,19 @@ void FolderManager::load()
         folder->setWindowPosition(
             wx,
             wy);
+        folder->setCornerRadius(obj.value("cornerRadius").toInt(30));
+        folder->setBackgroundStyle(obj.value("backgroundStyle").toString("black"));
+        folder->setBackgroundOpacity(obj.value("backgroundOpacity").toDouble(0.8));
+        folder->setIconSize(obj.value("iconSize").toInt(64));
+        folder->setIconSpacing(obj.value("iconSpacing").toInt(36));
+        folder->setEdgePadding(obj.value("edgePadding").toInt(20));
+        folder->setGridColumns(obj.value("gridColumns").toInt(3));
+        folder->setGridRows(obj.value("gridRows").toInt(2));
+        folder->setShowFolderName(obj.value("showFolderName").toBool(true));
+        folder->setShowIconNames(obj.value("showIconNames").toBool(true));
+        folder->setShowIconShadow(obj.value("showIconShadow").toBool(true));
+        folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
+        folder->setLockPosition(obj.value("lockPosition").toBool(false));
 
         m_folders.append(folder);
     }
@@ -270,6 +283,19 @@ bool FolderManager::save()
 
         json["windowY"] =
             folder->windowY();
+        json["cornerRadius"] = folder->cornerRadius();
+        json["backgroundStyle"] = folder->backgroundStyle();
+        json["backgroundOpacity"] = folder->backgroundOpacity();
+        json["iconSize"] = folder->iconSize();
+        json["iconSpacing"] = folder->iconSpacing();
+        json["edgePadding"] = folder->edgePadding();
+        json["gridColumns"] = folder->gridColumns();
+        json["gridRows"] = folder->gridRows();
+        json["showFolderName"] = folder->showFolderName();
+        json["showIconNames"] = folder->showIconNames();
+        json["showIconShadow"] = folder->showIconShadow();
+        json["allowIconGaps"] = folder->allowIconGaps();
+        json["lockPosition"] = folder->lockPosition();
 
         qDebug()
             << "  "

@@ -15,6 +15,7 @@
 #include <QSaveFile>
 #include <QJsonParseError>
 #include <QLoggingCategory>
+#include <algorithm>
 
 #include "IconProvider.h"
 
@@ -40,6 +41,53 @@ void FileManager::setFolderInfo(
 {
     m_folderId = folderId;
     m_folderName = folderName;
+}
+
+void FileManager::setGridLayout(int horizontalGridSize, int verticalGridSize,
+                                int columns, int rows, bool reflow)
+{
+    horizontalGridSize = qMax(40, horizontalGridSize);
+    verticalGridSize = qMax(40, verticalGridSize);
+    columns = qMax(1, columns);
+    rows = qMax(1, rows);
+    if (m_horizontalGridSize == horizontalGridSize
+        && m_verticalGridSize == verticalGridSize
+        && m_gridColumns == columns && m_gridRows == rows)
+        return;
+    m_horizontalGridSize = horizontalGridSize;
+    m_verticalGridSize = verticalGridSize;
+    m_gridColumns = columns;
+    m_gridRows = rows;
+    if (!reflow || m_items.isEmpty())
+        return;
+    for (int i = 0; i < m_items.size(); ++i) {
+        m_items.at(i)->setX((i % m_gridColumns) * m_horizontalGridSize);
+        m_items.at(i)->setY((i / m_gridColumns) * m_verticalGridSize);
+    }
+    save();
+}
+
+void FileManager::setAllowGaps(bool value)
+{
+    if (m_allowGaps == value)
+        return;
+    m_allowGaps = value;
+    if (!m_allowGaps) {
+        compactItems();
+        save();
+    }
+}
+
+void FileManager::compactItems()
+{
+    QList<AppItem *> ordered = m_items;
+    std::sort(ordered.begin(), ordered.end(), [](const AppItem *left, const AppItem *right) {
+        return left->y() == right->y() ? left->x() < right->x() : left->y() < right->y();
+    });
+    for (int i = 0; i < ordered.size(); ++i) {
+        ordered.at(i)->setX((i % m_gridColumns) * m_horizontalGridSize);
+        ordered.at(i)->setY((i / m_gridColumns) * m_verticalGridSize);
+    }
 }
 
 QString FileManager::dataPath()
@@ -83,6 +131,8 @@ QString FileManager::legacyDataPath()
 
 void FileManager::addFile(QString path)
 {
+    if (m_items.size() >= m_gridColumns * m_gridRows)
+        return;
 
     if (path.startsWith("file:///"))
     {
@@ -114,15 +164,14 @@ void FileManager::addFile(QString path)
         IconProvider::getIcon(path);
 
     // 自动找一个空闲网格位置
-    const int gridSize = 100;
-    const int maxCols = 3;
+    const int maxCols = m_gridColumns;
     int newX = 0, newY = 0;
     bool found = false;
 
     for (int row = 0; !found; row++) {
         for (int col = 0; col < maxCols; col++) {
-            int gx = col * gridSize;
-            int gy = row * gridSize;
+            int gx = col * m_horizontalGridSize;
+            int gy = row * m_verticalGridSize;
             bool occupied = false;
             for (AppItem *existing : m_items) {
                 if (existing &&
@@ -271,8 +320,7 @@ void FileManager::load()
 
     // 跟踪已占用位置，解决冲突
     QList<QPoint> occupied;
-    const int gridSize = 100;
-    const int maxCols = 3;
+    const int maxCols = m_gridColumns;
 
     beginResetModel();
     for (auto value : array)
@@ -301,8 +349,8 @@ void FileManager::load()
             bool found = false;
             for (int row = 0; !found; row++) {
                 for (int col = 0; col < maxCols; col++) {
-                    QPoint candidate(col * gridSize,
-                                     row * gridSize);
+                    QPoint candidate(col * m_horizontalGridSize,
+                                     row * m_verticalGridSize);
                     if (!occupied.contains(candidate)) {
                         x = candidate.x();
                         y = candidate.y();
@@ -348,6 +396,9 @@ void FileManager::removeFile(int index)
     endRemoveRows();
 
     obj->deleteLater();
+
+    if (!m_allowGaps)
+        compactItems();
 
     save();
 
@@ -416,5 +467,7 @@ void FileManager::moveItemToPosition(int index, int x, int y)
         target->setX(oldX);
         target->setY(oldY);
     }
+    if (!m_allowGaps)
+        compactItems();
     save();
 }
