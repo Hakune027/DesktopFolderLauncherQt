@@ -122,35 +122,60 @@ jobs:
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
-          $encodedTag = [Uri]::EscapeDataString($tag)
-          $releaseUrl = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$encodedTag"
-          $exists = $false
-          try {
-            Invoke-RestMethod -Uri $releaseUrl -Headers $headers | Out-Null
-            $exists = $true
-          } catch {
-            if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
+
+          # Listing releases also returns drafts to an authenticated caller.
+          # This lets a rerun repair a previous attempt which created a tag or
+          # draft but failed before publishing it.
+          $apiRoot = "https://api.github.com/repos/${{ github.repository }}"
+          $allReleases = Invoke-RestMethod -Uri "$apiRoot/releases?per_page=100" -Headers $headers
+          $release = $allReleases | Where-Object { $_.tag_name -eq $tag } | Select-Object -First 1
+          $isPrerelease = '${{ inputs.prerelease }}' -eq 'true'
+          $latestMode = if ($isPrerelease) { 'false' } else { 'true' }
+
+          if ($null -eq $release) {
+            $createBody = @{
+              tag_name = $tag
+              target_commitish = '${{ github.sha }}'
+              name = $title
+              draft = $false
+              prerelease = $isPrerelease
+              make_latest = $latestMode
+              generate_release_notes = $true
+            } | ConvertTo-Json -Compress
+            $release = Invoke-RestMethod -Method Post -Uri "$apiRoot/releases" `
+              -Headers $headers -ContentType 'application/json' -Body $createBody
+          } else {
+            $updateBody = @{
+              name = $title
+              draft = $false
+              prerelease = $isPrerelease
+              make_latest = $latestMode
+            } | ConvertTo-Json -Compress
+            $release = Invoke-RestMethod -Method Patch -Uri "$apiRoot/releases/$($release.id)" `
+              -Headers $headers -ContentType 'application/json' -Body $updateBody
           }
 
-          if ($exists) {
-            $oldAssets = gh release view $tag --json assets --jq '.assets[].name'
-            foreach ($oldAsset in $oldAssets) {
-              if ($oldAsset) {
-                gh release delete-asset $tag $oldAsset --yes
-                if ($LASTEXITCODE -ne 0) { throw "删除旧 Release 资源失败：$oldAsset" }
-              }
-            }
-            gh release upload $tag $asset --clobber
-            gh release edit $tag --draft=false
-          } else {
-            $arguments = @('release', 'create', $tag, $asset, '--target', '${{ github.sha }}', '--title', $title, '--generate-notes')
-            if ('${{ inputs.prerelease }}' -eq 'true') {
-              $arguments += '--prerelease'
-            }
-            gh @arguments
+          foreach ($oldAsset in $release.assets) {
+            Invoke-RestMethod -Method Delete -Uri $oldAsset.url -Headers $headers
           }
-          if ($LASTEXITCODE -ne 0) {
-            throw "GitHub Release 发布失败，gh exit code: $LASTEXITCODE"
+
+          $assetName = [IO.Path]::GetFileName($asset)
+          $encodedName = [Uri]::EscapeDataString($assetName)
+          $uploadUrl = "https://uploads.github.com/repos/${{ github.repository }}/releases/$($release.id)/assets?name=$encodedName"
+          $uploaded = Invoke-RestMethod -Method Post -Uri $uploadUrl -Headers $headers `
+            -ContentType 'application/octet-stream' -InFile $asset
+          if ($null -eq $uploaded.id -or $uploaded.state -ne 'uploaded') {
+            throw '安装器上传到 GitHub Release 后未处于 uploaded 状态'
           }
-          $releaseLink = gh release view $tag --json url --jq .url
-          "### Release 已发布：[$tag]($releaseLink)" >> $env:GITHUB_STEP_SUMMARY
+
+          # Query once more so an API or permission issue cannot leave this
+          # workflow green while the public Release is still absent.
+          $published = Invoke-RestMethod -Uri "$apiRoot/releases/$($release.id)" -Headers $headers
+          if ($published.draft -or $published.tag_name -ne $tag) {
+            throw 'Release 创建完成但仍为草稿或版本标签不匹配'
+          }
+          $publishedAsset = $published.assets | Where-Object { $_.name -eq $assetName }
+          if ($null -eq $publishedAsset) {
+            throw 'Release 已创建，但安装器资源不存在'
+          }
+          "### Release 已发布：[$tag]($($published.html_url))" >> $env:GITHUB_STEP_SUMMARY
