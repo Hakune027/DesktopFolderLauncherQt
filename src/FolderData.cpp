@@ -92,6 +92,8 @@ bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
 bool FolderData::frostedGlass() const { return m_frostedGlass; }
 QString FolderData::borderStyle() const { return m_borderStyle; }
+bool FolderData::overflowMode() const { return m_overflowMode; }
+QString FolderData::expansionDirection() const { return m_expansionDirection; }
 
 void FolderData::setCornerRadius(int value)
 {
@@ -153,11 +155,18 @@ void FolderData::setEdgePadding(int value)
 void FolderData::setGridColumns(int value)
 {
     value = qBound(1, value, 12);
-    const int requiredRows = qMax(1, (m_fileManager->rowCount() + value - 1) / value);
-    if (m_gridColumns == value && m_gridRows >= requiredRows)
+    int rows = m_gridRows;
+    if (m_overflowMode) {
+        if (value * rows < 2)
+            rows = 2;
+    } else {
+        const int requiredRows = qMax(1, (m_fileManager->rowCount() + value - 1) / value);
+        rows = qMax(rows, requiredRows);
+    }
+    if (m_gridColumns == value && m_gridRows == rows)
         return;
     m_gridColumns = value;
-    m_gridRows = qMax(m_gridRows, requiredRows);
+    m_gridRows = rows;
     updateGridLayout();
     emit appearanceChanged();
 }
@@ -165,10 +174,17 @@ void FolderData::setGridColumns(int value)
 void FolderData::setGridRows(int value)
 {
     value = qBound(1, value, 12);
-    const int requiredRows = qMax(1, (m_fileManager->rowCount() + m_gridColumns - 1) / m_gridColumns);
-    value = qMax(value, requiredRows);
-    if (m_gridRows == value)
+    int columns = m_gridColumns;
+    if (m_overflowMode) {
+        if (columns * value < 2)
+            columns = 2;
+    } else {
+        const int requiredRows = qMax(1, (m_fileManager->rowCount() + columns - 1) / columns);
+        value = qMax(value, requiredRows);
+    }
+    if (m_gridRows == value && m_gridColumns == columns)
         return;
+    m_gridColumns = columns;
     m_gridRows = value;
     updateGridLayout();
     emit appearanceChanged();
@@ -235,6 +251,33 @@ void FolderData::setBorderStyle(const QString &value)
     m_borderStyle = normalized;
     emit appearanceChanged();
 }
+
+void FolderData::setOverflowMode(bool value)
+{
+    if (m_overflowMode == value)
+        return;
+    m_overflowMode = value;
+    m_fileManager->setAllowOverflow(value);
+    if (!value) {
+        const int requiredRows = qMax(1, (m_fileManager->rowCount() + m_gridColumns - 1)
+                                      / m_gridColumns);
+        m_gridRows = qBound(1, requiredRows, 12);
+        updateGridLayout();
+    }
+    emit appearanceChanged();
+}
+
+void FolderData::setExpansionDirection(const QString &value)
+{
+    static const QStringList allowed = {QStringLiteral("down"), QStringLiteral("up"),
+                                        QStringLiteral("right"), QStringLiteral("left")};
+    const QString normalized = allowed.contains(value) ? value : QStringLiteral("down");
+    if (m_expansionDirection == normalized)
+        return;
+    m_expansionDirection = normalized;
+    emit appearanceChanged();
+}
+
 
 
 

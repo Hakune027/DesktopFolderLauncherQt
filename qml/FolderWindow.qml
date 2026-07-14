@@ -15,10 +15,26 @@ Window {
         id: folderSettingsWindow
         folderData: root.folderData
         transientParent: root
+        onVisibleChanged: {
+            if (!visible && !root.active && root.overflowExpanded)
+                desktopCollapseTimer.restart();
+        }
     }
 
     Menu {
         id: folderContextMenu
+        popupType: Popup.Window
+        MenuItem {
+            text: "溢出收纳模式"
+            checkable: true
+            checked: root.folderData && root.folderData.overflowMode
+            onTriggered: {
+                if (root.folderData) {
+                    root.folderData.overflowMode = checked;
+                    folderManager.save();
+                }
+            }
+        }
         MenuItem {
             text: "文件夹设置"
             onTriggered: {
@@ -34,8 +50,79 @@ Window {
                                          : 36
     property int layoutCellSize: layoutIconSize + layoutEffectiveSpacing
     property int layoutEdgePadding: folderData ? folderData.edgePadding : 20
-    property int layoutColumns: folderData ? folderData.gridColumns : 3
-    property int layoutRows: folderData ? folderData.gridRows : 2
+    property int configuredColumns: folderData ? folderData.gridColumns : 3
+    property int configuredRows: folderData ? folderData.gridRows : 2
+    property string expansionDirection: folderData ? folderData.expansionDirection : "down"
+    property bool horizontalExpansion: expansionDirection === "left"
+                                       || expansionDirection === "right"
+    property bool overflowEnabled: folderData && folderData.overflowMode
+    property int compactVisibleCount: Math.max(1, configuredColumns * configuredRows - 1)
+    property int overflowClusterSlot: expansionDirection === "up"
+                                      ? Math.max(0, configuredColumns - 1)
+                                      : expansionDirection === "left"
+                                        ? Math.max(0, (configuredRows - 1) * configuredColumns)
+                                        : Math.max(0, configuredColumns * configuredRows - 1)
+    property bool overflowExpanded: false
+    property bool iconContextMenuOpen: false
+    property int totalItems: folderData ? folderData.itemCount : 0
+    property bool hasOverflow: overflowEnabled && totalItems > compactVisibleCount
+    property int collapsedSlots: Math.min(totalItems, compactVisibleCount) + (hasOverflow ? 1 : 0)
+    property int layoutColumns: overflowEnabled && overflowExpanded && horizontalExpansion
+                                ? Math.max(configuredColumns,
+                                           Math.ceil(totalItems / Math.max(1, configuredRows)))
+                                : configuredColumns
+    property int layoutRows: overflowEnabled && overflowExpanded && !horizontalExpansion
+                             ? Math.max(configuredRows,
+                                        Math.ceil(totalItems / Math.max(1, configuredColumns)))
+                             : configuredRows
+    property real collapsedAnchorX: 0
+    property real collapsedAnchorY: 0
+    property real expansionAnchorRight: 0
+    property real expansionAnchorBottom: 0
+    property string activeExpansionDirection: "down"
+    property bool hasCollapsedAnchor: false
+    function compactSlotForIndex(index) {
+        return index >= overflowClusterSlot ? index + 1 : index;
+    }
+    function expandedSlotForIndex(index) {
+        let extraRows = Math.max(0, layoutRows - configuredRows);
+        let extraColumns = Math.max(0, layoutColumns - configuredColumns);
+        let baseRowOffset = expansionDirection === "up" ? extraRows : 0;
+        let baseColumnOffset = expansionDirection === "left" ? extraColumns : 0;
+
+        if (index < compactVisibleCount) {
+            let compactSlot = compactSlotForIndex(index);
+            let baseRow = Math.floor(compactSlot / configuredColumns);
+            let baseColumn = compactSlot % configuredColumns;
+            return baseRow * layoutColumns + baseColumn;
+        }
+
+        let overflowIndex = index - compactVisibleCount;
+        let clusterRow = Math.floor(overflowClusterSlot / configuredColumns) + baseRowOffset;
+        let clusterColumn = overflowClusterSlot % configuredColumns + baseColumnOffset;
+        if (overflowIndex === 0)
+            return clusterRow * layoutColumns + clusterColumn;
+
+        let remaining = overflowIndex - 1;
+        if (expansionDirection === "up") {
+            for (let row = extraRows - 1; row >= 0; --row)
+                for (let column = 0; column < layoutColumns; ++column)
+                    if (remaining-- === 0) return row * layoutColumns + column;
+        } else if (expansionDirection === "left") {
+            for (let column = extraColumns - 1; column >= 0; --column)
+                for (let row = 0; row < layoutRows; ++row)
+                    if (remaining-- === 0) return row * layoutColumns + column;
+        } else if (expansionDirection === "right") {
+            for (let column = configuredColumns; column < layoutColumns; ++column)
+                for (let row = 0; row < layoutRows; ++row)
+                    if (remaining-- === 0) return row * layoutColumns + column;
+        } else {
+            for (let row = configuredRows; row < layoutRows; ++row)
+                for (let column = 0; column < layoutColumns; ++column)
+                    if (remaining-- === 0) return row * layoutColumns + column;
+        }
+        return clusterRow * layoutColumns + clusterColumn;
+    }
     property int layoutIconSize: folderData ? folderData.iconSize : 64
     property bool showFolderHeader: !folderData || folderData.showFolderName
     property bool showIconLabels: !folderData || folderData.showIconNames
@@ -46,26 +133,29 @@ Window {
                                   + Math.max(0, layoutColumns - 1) * (layoutCellSize - layoutIconSize)
     property int layoutGridHeight: layoutRows * layoutIconSize
                                    + Math.max(0, layoutRows - 1) * layoutVerticalSpacing
+    property int targetWindowWidth: layoutGridWidth + layoutEdgePadding * 2
+    property int targetWindowHeight: layoutHeaderHeight + layoutGridHeight + layoutEdgePadding * 2
+    property bool geometryReady: false
     property bool lightTheme: folderData && folderData.backgroundStyle === "white"
     property color foregroundColor: lightTheme ? "#E6202430" : "#F5FFFFFF"
     property color mutedColor: lightTheme ? "#991A1E28" : "#A8FFFFFF"
     property bool frostedGlassEnabled: folderData && folderData.frostedGlass
     property string currentBorderStyle: folderData ? folderData.borderStyle : "subtle"
 
-    width: layoutGridWidth + layoutEdgePadding * 2
-
-    height: layoutHeaderHeight + layoutGridHeight + layoutEdgePadding * 2
+    width: 1
+    height: 1
 
     // 初始隐藏, 等恢复位置后再显示, 避免闪烁 & 位置竞态
     visible: false
     opacity: 0
 
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint
+    // Desktop widgets must remain interactive without becoming the active
+    // top-level window. Otherwise Windows raises them above normal apps as
+    // soon as the user clicks an icon.
+    flags: Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+           | Qt.WindowDoesNotAcceptFocus
 
     color: "transparent"
-
-    Behavior on width { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-    Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
     ParallelAnimation {
         id: windowEnterAnimation
@@ -77,10 +167,16 @@ Window {
         if (!root.screen)
             return;
         let area = root.screen.availableGeometry;
-        root.x = Math.max(area.x, Math.min(root.x,
-                                           area.x + Math.max(0, area.width - root.width)));
-        root.y = Math.max(area.y, Math.min(root.y,
-                                           area.y + Math.max(0, area.height - root.height)));
+        let areaX = area && area.x !== undefined ? area.x : (root.screen.virtualX || 0);
+        let areaY = area && area.y !== undefined ? area.y : (root.screen.virtualY || 0);
+        let areaWidth = area && area.width !== undefined
+                ? area.width : (root.screen.desktopAvailableWidth || root.screen.width || root.width);
+        let areaHeight = area && area.height !== undefined
+                ? area.height : (root.screen.desktopAvailableHeight || root.screen.height || root.height);
+        root.x = Math.max(areaX, Math.min(root.x,
+                                         areaX + Math.max(0, areaWidth - root.width)));
+        root.y = Math.max(areaY, Math.min(root.y,
+                                         areaY + Math.max(0, areaHeight - root.height)));
     }
 
     function applyWindowEffects() {
@@ -89,8 +185,89 @@ Window {
                                             root.lightTheme, false);
     }
 
+    function animateToTargetGeometry() {
+        if (!geometryReady || typeof windowEffects === "undefined")
+            return;
+        let targetX = hasCollapsedAnchor && activeExpansionDirection === "left"
+                ? (overflowExpanded ? expansionAnchorRight - targetWindowWidth : collapsedAnchorX)
+                : root.x;
+        let targetY = hasCollapsedAnchor && activeExpansionDirection === "up"
+                ? (overflowExpanded ? expansionAnchorBottom - targetWindowHeight : collapsedAnchorY)
+                : root.y;
+        if (!overflowExpanded && hasCollapsedAnchor) {
+            targetX = collapsedAnchorX;
+            targetY = collapsedAnchorY;
+        }
+        windowEffects.animateGeometry(root, targetX, targetY,
+                                      targetWindowWidth, targetWindowHeight, 240);
+    }
+
+    onTargetWindowWidthChanged: if (geometryReady) Qt.callLater(animateToTargetGeometry)
+    onTargetWindowHeightChanged: if (geometryReady) Qt.callLater(animateToTargetGeometry)
+
     onFrostedGlassEnabledChanged: Qt.callLater(applyWindowEffects)
     onLightThemeChanged: Qt.callLater(applyWindowEffects)
+    onOverflowEnabledChanged: if (!overflowEnabled) overflowExpanded = false
+    onHasOverflowChanged: if (!hasOverflow) overflowExpanded = false
+    onOverflowExpandedChanged: {
+        if (overflowExpanded) {
+            collapsedAnchorX = root.x;
+            collapsedAnchorY = root.y;
+            expansionAnchorRight = root.x + root.width;
+            expansionAnchorBottom = root.y + root.height;
+            activeExpansionDirection = expansionDirection;
+            hasCollapsedAnchor = true;
+            // Keep the component on the desktop layer even while expanded.
+            // Menus and the settings window are independent popup windows and
+            // can still activate normally.
+            if (typeof windowEffects !== "undefined")
+                windowEffects.sendToDesktopLayer(root);
+        }
+        Qt.callLater(root.animateToTargetGeometry);
+        geometrySettleTimer.restart();
+    }
+    Timer {
+        id: geometrySettleTimer
+        interval: 260
+        repeat: false
+        onTriggered: {
+            if (!root.overflowExpanded) {
+                root.hasCollapsedAnchor = false;
+                Qt.callLater(root.clampToAvailableScreen);
+                if (typeof windowEffects !== "undefined")
+                    windowEffects.sendToDesktopLayer(root);
+            }
+        }
+    }
+    onExpansionDirectionChanged: if (overflowExpanded) overflowExpanded = false
+    onActiveChanged: {
+        if (!active && overflowExpanded)
+            desktopCollapseTimer.restart();
+    }
+
+    Connections {
+        target: typeof windowEffects !== "undefined" ? windowEffects : null
+        function onDesktopClicked() {
+            if (root.overflowExpanded
+                    && !folderContextMenu.visible
+                    && !root.iconContextMenuOpen
+                    && !folderSettingsWindow.visible)
+                root.overflowExpanded = false;
+        }
+    }
+
+    Timer {
+        id: desktopCollapseTimer
+        interval: 140
+        repeat: false
+        onTriggered: {
+            if (!root.active && root.overflowExpanded
+                    && !folderContextMenu.visible
+                    && !root.iconContextMenuOpen
+                    && !folderSettingsWindow.visible)
+                root.overflowExpanded = false;
+        }
+    }
 
     onScreenChanged: Qt.callLater(clampToAvailableScreen)
 
@@ -127,16 +304,18 @@ Window {
                                          : (root.folderData ? root.folderData.cornerRadius : 30)
 
         color: {
+            let configuredOpacity = root.folderData ? root.folderData.backgroundOpacity : 0.8;
+            let effectiveOpacity = root.overflowExpanded
+                    ? Math.max(configuredOpacity, 0.86) : configuredOpacity;
             if (root.frostedGlassEnabled) {
-                let glassTint = (root.folderData ? root.folderData.backgroundOpacity : 0.8) * 0.28;
+                let glassTint = effectiveOpacity * (root.overflowExpanded ? 0.62 : 0.28);
                 return root.lightTheme
                        ? Qt.rgba(1, 1, 1, glassTint)
                        : Qt.rgba(0.04, 0.04, 0.055, glassTint);
             }
-            let opacity = root.folderData ? root.folderData.backgroundOpacity : 0.8;
             return root.folderData && root.folderData.backgroundStyle === "white"
-                   ? Qt.rgba(1, 1, 1, opacity)
-                   : Qt.rgba(0.125, 0.125, 0.125, opacity);
+                   ? Qt.rgba(1, 1, 1, effectiveOpacity)
+                   : Qt.rgba(0.125, 0.125, 0.125, effectiveOpacity);
         }
 
         border.width: {
@@ -171,6 +350,15 @@ Window {
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: folderContextMenu.popup()
+        }
+
+        // Declared behind the interactive children, so only a genuine click
+        // on empty folder space collapses the expanded grid.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            enabled: root.hasOverflow && root.overflowExpanded
+            onClicked: root.overflowExpanded = false
         }
 
         // ---- 标题栏 ----
@@ -216,6 +404,7 @@ Window {
                     font.weight: Font.DemiBold
                 }
             }
+
         }
 
         // ---- 图标区(可拖放排序) ----
@@ -241,6 +430,27 @@ Window {
                                               ? root.folderData.autoFillTransparentIcons : false
 
                     itemIndex: index
+                    visible: !root.overflowEnabled || root.overflowExpanded
+                             || index < root.compactVisibleCount
+                    indexedLayout: root.overflowEnabled
+                    layoutIndex: root.overflowEnabled
+                                 ? (root.overflowExpanded
+                                    ? root.expandedSlotForIndex(index)
+                                    : root.compactSlotForIndex(index))
+                                 : index
+                    layoutColumns: root.layoutColumns
+                    layoutRows: root.layoutRows
+                    horizontalLayout: false
+                    layoutOffsetX: index < root.compactVisibleCount
+                                   && root.activeExpansionDirection === "left"
+                                   && root.hasCollapsedAnchor
+                                   ? root.width - (root.expansionAnchorRight - root.collapsedAnchorX) : 0
+                    layoutOffsetY: index < root.compactVisibleCount
+                                   && root.activeExpansionDirection === "up"
+                                   && root.hasCollapsedAnchor
+                                   ? root.height - (root.expansionAnchorBottom - root.collapsedAnchorY) : 0
+                    draggable: !root.overflowEnabled
+                    onContextMenuOpenChanged: root.iconContextMenuOpen = contextMenuOpen
 
                     // 单击 / 右键菜单 → 打开文件
                     onOpenRequest: {
@@ -264,6 +474,50 @@ Window {
                         folderData.moveItemToPosition(index, x, y);
                     }
                 }
+            }
+
+            Rectangle {
+                id: overflowCluster
+                visible: root.hasOverflow && !root.overflowExpanded
+                x: (root.overflowClusterSlot % Math.max(1, root.configuredColumns))
+                   * root.layoutCellSize
+                y: Math.floor(root.overflowClusterSlot / Math.max(1, root.configuredColumns))
+                   * root.layoutVerticalCellSize
+                width: root.layoutIconSize
+                height: root.layoutIconSize
+                radius: Math.max(10, width * 0.22)
+                color: clusterHover.hovered
+                       ? (root.lightTheme ? "#22000000" : "#32ffffff")
+                       : (root.lightTheme ? "#14000000" : "#22ffffff")
+                border.width: 1
+                border.color: root.lightTheme ? "#18000000" : "#28ffffff"
+                z: 50
+
+                Repeater {
+                    model: Math.min(4, Math.max(0, root.totalItems - root.compactVisibleCount))
+                    Image {
+                        required property int index
+                        readonly property var overflowItem: root.folderData
+                                                            ? root.folderData.items.itemAt(root.compactVisibleCount + index)
+                                                            : null
+                        width: overflowCluster.width * 0.31
+                        height: width
+                        x: overflowCluster.width * (index % 2 === 0 ? 0.16 : 0.53)
+                        y: overflowCluster.height * (index < 2 ? 0.16 : 0.53)
+                        source: overflowItem ? overflowItem.icon : ""
+                        sourceSize.width: 96
+                        sourceSize.height: 96
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
+                    }
+                }
+
+                HoverHandler { id: clusterHover }
+                TapHandler { onTapped: root.overflowExpanded = true }
+                Behavior on color { ColorAnimation { duration: 130 } }
+                scale: clusterHover.hovered ? 1.05 : 1
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
             }
         }
     }
@@ -313,6 +567,9 @@ Window {
         repeat: false
 
         onTriggered: {
+            root.width = root.targetWindowWidth;
+            root.height = root.targetWindowHeight;
+            root.geometryReady = true;
             console.log(
                 "[FolderWindow] Timer触发:",
                 root.folderName,
@@ -346,6 +603,10 @@ Window {
             windowEnterAnimation.start();
             Qt.callLater(root.applyWindowEffects);
             Qt.callLater(root.clampToAvailableScreen);
+            Qt.callLater(function() {
+                if (typeof windowEffects !== "undefined")
+                    windowEffects.sendToDesktopLayer(root);
+            });
             Qt.callLater(function() {
                 if (!root.nativeDropRegistered && root.folderData) {
                     dropHandler.registerWindowTarget(root, root.folderData, "addFile");

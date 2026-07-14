@@ -48,6 +48,8 @@ class FolderData : public QObject
     Q_PROPERTY(bool lockPosition READ lockPosition WRITE setLockPosition NOTIFY interactionChanged)
     Q_PROPERTY(bool frostedGlass READ frostedGlass WRITE setFrostedGlass NOTIFY appearanceChanged)
     Q_PROPERTY(QString borderStyle READ borderStyle WRITE setBorderStyle NOTIFY appearanceChanged)
+    Q_PROPERTY(bool overflowMode READ overflowMode WRITE setOverflowMode NOTIFY appearanceChanged)
+    Q_PROPERTY(QString expansionDirection READ expansionDirection WRITE setExpansionDirection NOTIFY appearanceChanged)
 
 public:
     explicit FolderData(
@@ -85,6 +87,8 @@ public:
     bool lockPosition() const;
     bool frostedGlass() const;
     QString borderStyle() const;
+    bool overflowMode() const;
+    QString expansionDirection() const;
 
     void setCornerRadius(int value);
     void setBackgroundStyle(const QString &value);
@@ -101,6 +105,8 @@ public:
     void setLockPosition(bool value);
     void setFrostedGlass(bool value);
     void setBorderStyle(const QString &value);
+    void setOverflowMode(bool value);
+    void setExpansionDirection(const QString &value);
 
     Q_INVOKABLE
     void setWindowPosition(
@@ -162,6 +168,8 @@ private:
     bool m_lockPosition = false;
     bool m_frostedGlass = false;
     QString m_borderStyle = QStringLiteral("subtle");
+    bool m_overflowMode = false;
+    QString m_expansionDirection = QStringLiteral("down");
 
     FileManager *m_fileManager;
 };

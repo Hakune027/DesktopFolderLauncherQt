@@ -236,6 +236,10 @@ void FolderManager::load()
         folder->setIconSize(obj.value("iconSize").toInt(64));
         folder->setIconSpacing(obj.value("iconSpacing").toInt(36));
         folder->setEdgePadding(obj.value("edgePadding").toInt(20));
+        // Restore overflow mode before grid dimensions so a compact grid is
+        // not enlarged to fit all items during startup.
+        folder->setOverflowMode(obj.value("overflowMode").toBool(false));
+        folder->setExpansionDirection(obj.value("expansionDirection").toString("down"));
         folder->setGridColumns(obj.value("gridColumns").toInt(3));
         folder->setGridRows(obj.value("gridRows").toInt(2));
         folder->setShowFolderName(obj.value("showFolderName").toBool(true));
@@ -300,6 +304,8 @@ bool FolderManager::save()
         json["lockPosition"] = folder->lockPosition();
         json["frostedGlass"] = folder->frostedGlass();
         json["borderStyle"] = folder->borderStyle();
+        json["overflowMode"] = folder->overflowMode();
+        json["expansionDirection"] = folder->expansionDirection();
 
         qDebug()
             << "  "

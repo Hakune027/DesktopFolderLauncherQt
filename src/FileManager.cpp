@@ -78,6 +78,11 @@ void FileManager::setAllowGaps(bool value)
     }
 }
 
+void FileManager::setAllowOverflow(bool value)
+{
+    m_allowOverflow = value;
+}
+
 void FileManager::compactItems()
 {
     QList<AppItem *> ordered = m_items;
@@ -131,7 +136,8 @@ QString FileManager::legacyDataPath()
 
 void FileManager::addFile(QString path)
 {
-    if (m_items.size() >= m_gridColumns * m_gridRows)
+    if ((!m_allowOverflow && m_items.size() >= m_gridColumns * m_gridRows)
+        || (m_allowOverflow && m_items.size() >= 144))
         return;
 
     if (path.startsWith("file:///"))
@@ -253,6 +259,11 @@ bool FileManager::save()
     }
     qWarning() << "Failed to open folder data for writing:" << file.errorString();
     return false;
+}
+
+QObject *FileManager::itemAt(int index) const
+{
+    return index >= 0 && index < m_items.size() ? m_items.at(index) : nullptr;
 }
 
 void FileManager::load()

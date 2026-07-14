@@ -54,6 +54,9 @@ qt_add_executable(
 
     src/WindowEffects.cpp
     src/WindowEffects.h
+
+    src/AppController.cpp
+    src/AppController.h
 )
 
 
@@ -77,6 +80,22 @@ qt_add_qml_module(
         qml/FolderSpawner.qml
 
         qml/FolderSettingsWindow.qml
+
+        qml/FluentIcon.qml
+
+    RESOURCES
+        assets/icons/app.svg
+        assets/icons/folder.svg
+        assets/icons/appearance.svg
+        assets/icons/layout.svg
+        assets/icons/behavior.svg
+        assets/icons/info.svg
+        assets/icons/add.svg
+        assets/icons/settings.svg
+        assets/icons/delete.svg
+        assets/icons/lock.svg
+        assets/icons/startup.svg
+        assets/icons/close.svg
 
 )
 
@@ -102,6 +121,7 @@ target_link_libraries(
     Qt6::QuickControls2
 )
 if(WIN32)
+    target_sources(DesktopFolderLauncher PRIVATE resources/app.rc)
     target_link_libraries(DesktopFolderLauncher PRIVATE ole32 shell32 dwmapi)
 endif()
 

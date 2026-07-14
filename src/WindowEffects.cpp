@@ -1,5 +1,7 @@
 #include "WindowEffects.h"
 
+#include <QTimer>
+#include <QVariantAnimation>
 #include <QtGlobal>
 
 #ifdef Q_OS_WIN
@@ -43,6 +45,94 @@ constexpr DWORD DwmSystemBackdropTransientWindow = 3;
 constexpr DWORD DwmSystemBackdropTabbedWindow = 4;
 }
 #endif
+
+WindowEffects::WindowEffects(QObject *parent)
+    : QObject(parent)
+{
+#ifdef Q_OS_WIN
+    m_desktopClickTimer = new QTimer(this);
+    m_desktopClickTimer->setInterval(30);
+    connect(m_desktopClickTimer, &QTimer::timeout, this, [this] {
+        const bool down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+        if (down && !m_leftButtonDown) {
+            POINT point{};
+            GetCursorPos(&point);
+            HWND hwnd = WindowFromPoint(point);
+            bool desktopSurface = false;
+            while (hwnd) {
+                wchar_t className[128]{};
+                GetClassNameW(hwnd, className, 128);
+                desktopSurface = wcscmp(className, L"Progman") == 0
+                        || wcscmp(className, L"WorkerW") == 0
+                        || wcscmp(className, L"SHELLDLL_DefView") == 0
+                        || wcscmp(className, L"SysListView32") == 0;
+                if (desktopSurface)
+                    break;
+                hwnd = GetParent(hwnd);
+            }
+            if (desktopSurface)
+                emit desktopClicked();
+        }
+        m_leftButtonDown = down;
+    });
+    m_desktopClickTimer->start();
+#endif
+}
+
+void WindowEffects::animateGeometry(QWindow *window, int x, int y,
+                                    int width, int height, int duration)
+{
+    if (!window)
+        return;
+
+    if (auto oldAnimation = m_geometryAnimations.value(window)) {
+        oldAnimation->stop();
+        oldAnimation->deleteLater();
+    }
+
+    auto *animation = new QVariantAnimation(this);
+    m_geometryAnimations.insert(window, animation);
+    animation->setStartValue(window->geometry());
+    animation->setEndValue(QRect(x, y, qMax(1, width), qMax(1, height)));
+    animation->setDuration(qMax(0, duration));
+    animation->setEasingCurve(QEasingCurve::OutCubic);
+    const QPointer<QWindow> guardedWindow(window);
+    connect(animation, &QVariantAnimation::valueChanged, this,
+            [guardedWindow](const QVariant &value) {
+        if (!guardedWindow)
+            return;
+        const QRect rect = value.toRect();
+        // QRect/QWindow coordinates are device-independent. Passing these
+        // values directly to SetWindowPos treats them as physical pixels and
+        // sends windows to the wrong position on scaled or mixed-DPI screens.
+        // QWindow performs the native conversion while still applying the
+        // complete geometry as one operation.
+        guardedWindow->setGeometry(rect);
+    });
+    connect(animation, &QVariantAnimation::finished, this,
+            [this, window, animation] {
+        if (m_geometryAnimations.value(window) == animation)
+            m_geometryAnimations.remove(window);
+        animation->deleteLater();
+    });
+    connect(window, &QObject::destroyed, animation, [this, window] {
+        m_geometryAnimations.remove(window);
+    });
+    animation->start();
+}
+
+void WindowEffects::sendToDesktopLayer(QWindow *window)
+{
+    if (!window)
+        return;
+#ifdef Q_OS_WIN
+    SetWindowPos(reinterpret_cast<HWND>(window->winId()), HWND_BOTTOM,
+                 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+#else
+    window->lower();
+#endif
+}
 
 bool WindowEffects::applyFrostedGlass(QWindow *window, bool enabled,
                                       bool lightTheme, bool windowShadow)

@@ -22,6 +22,7 @@ public:
     void setGridLayout(int horizontalGridSize, int verticalGridSize,
                        int columns, int rows, bool reflow = true);
     void setAllowGaps(bool value);
+    void setAllowOverflow(bool value);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -52,6 +53,8 @@ public:
     Q_INVOKABLE
     bool save();
 
+    Q_INVOKABLE QObject *itemAt(int index) const;
+
 signals:
 
     void itemsChanged();
@@ -73,6 +76,7 @@ private:
     int m_gridColumns = 3;
     int m_gridRows = 2;
     bool m_allowGaps = true;
+    bool m_allowOverflow = false;
 };
 
 #endif

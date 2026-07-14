@@ -17,6 +17,15 @@ Item {
     property color labelColor: "white"
     property bool lightTheme: false
     property bool autoFillTransparentIcons: false
+    property bool indexedLayout: false
+    property int layoutIndex: itemIndex
+    property int layoutColumns: 1
+    property int layoutRows: 1
+    property bool horizontalLayout: false
+    property real layoutOffsetX: 0
+    property real layoutOffsetY: 0
+    property bool draggable: true
+    readonly property bool contextMenuOpen: contextMenu.visible
     property real entryScale: 0.88
 
     // 信号: 由 FolderWindow 处理
@@ -25,8 +34,14 @@ Item {
     signal openLocationRequest(string path)
     signal removeRequest(int index)
 
-    x: item ? item.x : 0
-    y: item ? item.y : 0
+    x: indexedLayout ? (horizontalLayout
+                        ? Math.floor(layoutIndex / Math.max(1, layoutRows)) * cellSize
+                        : (layoutIndex % Math.max(1, layoutColumns)) * cellSize) + layoutOffsetX
+                     : (item ? item.x : 0)
+    y: indexedLayout ? (horizontalLayout
+                        ? (layoutIndex % Math.max(1, layoutRows)) * verticalCellSize
+                        : Math.floor(layoutIndex / Math.max(1, layoutColumns)) * verticalCellSize) + layoutOffsetY
+                     : (item ? item.y : 0)
 
     opacity: 0
 
@@ -107,6 +122,7 @@ Item {
     // 右键菜单
     Menu {
         id: contextMenu
+        popupType: Popup.Window
 
         MenuItem {
             text: "打开"
@@ -138,7 +154,7 @@ Item {
         id: dragArea
         anchors.fill: parent
         hoverEnabled: true
-        drag.target: appIcon
+        drag.target: appIcon.draggable ? appIcon : null
         drag.minimumX: 0
         drag.minimumY: 0
         drag.maximumX: Math.max(0, appIcon.parent.width - appIcon.width)
@@ -153,7 +169,7 @@ Item {
         onPressed: function (mouse) {
             // 右键按下 → 立即弹出菜单(标准右键行为)
             if (mouse.button === Qt.RightButton) {
-                contextMenu.popup();
+                contextMenu.popup(mouse.x, mouse.y);
                 return;
             }
 
@@ -174,7 +190,7 @@ Item {
             if (mouse.button !== Qt.LeftButton)
                 return;
 
-            if (!wasDragged) {
+            if (!wasDragged || !appIcon.draggable) {
                 // 左键单击 → 打开文件
                 appIcon.openRequest();
                 return;
@@ -197,7 +213,9 @@ Item {
     }
 
     // 悬停放大 / 拖拽放大
-    scale: entryScale * (dragArea.drag.active ? 1.10 : (dragArea.pressed ? 0.96 : (dragArea.containsMouse ? 1.04 : 1.0)))
+    scale: entryScale * (dragArea.drag.active ? 1.10
+                         : (dragArea.pressed && (dragArea.pressedButtons & Qt.LeftButton)) ? 0.96
+                         : (dragArea.containsMouse || contextMenu.visible) ? 1.04 : 1.0)
     Behavior on scale {
         NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
     }

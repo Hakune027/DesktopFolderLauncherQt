@@ -11,6 +11,7 @@
 #include "src/FolderManager.h"
 #include "src/DropHandler.h"
 #include "src/WindowEffects.h"
+#include "src/AppController.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +19,8 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
 
     QApplication app(argc, argv);
-    app.setFont(QFont(QStringLiteral("Segoe UI Variable Text"), 10));
+    app.setWindowIcon(QIcon(QStringLiteral(":/qt/qml/DesktopFolderLauncher/assets/icons/app.svg")));
+    app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 10));
     app.setQuitOnLastWindowClosed(false);
 
     QQuickWindow::setDefaultAlphaBuffer(true);
@@ -27,6 +29,7 @@ int main(int argc, char *argv[])
 
     DropHandler *dropHandler = new DropHandler(&app);
     WindowEffects windowEffects;
+    AppController appController;
 
     QQmlApplicationEngine engine;
 
@@ -41,6 +44,7 @@ int main(int argc, char *argv[])
             dropHandler);
 
     engine.rootContext()->setContextProperty("windowEffects", &windowEffects);
+    engine.rootContext()->setContextProperty("appController", &appController);
 
     engine.loadFromModule(
         "DesktopFolderLauncher",
