@@ -2,7 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
-
+#include "src/FolderManager.h"
 #include "src/SettingsManager.h"
 #include "src/FileManager.h"
 #include "src/DropHandler.h"
@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
 
     fileManager.load();
 
+    FolderManager folderManager;
+
     DropHandler *dropHandler = new DropHandler(&app);
 
     QQmlApplicationEngine engine;
@@ -33,6 +35,11 @@ int main(int argc, char *argv[])
         ->setContextProperty(
             "fileManager",
             &fileManager);
+
+    engine.rootContext()
+        ->setContextProperty(
+            "folderManager",
+            &folderManager);
 
     QObject::connect(
         dropHandler,

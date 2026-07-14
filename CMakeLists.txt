@@ -47,6 +47,9 @@ qt_add_executable(
 
     src/DropHandler.cpp
     src/DropHandler.h
+
+    src/FolderManager.cpp
+    src/FolderManager.h
 )
 
 
@@ -64,6 +67,10 @@ qt_add_qml_module(
         qml/FolderWindow.qml
 
         qml/AppIcon.qml
+
+        qml/SettingsWindow.qml
+
+        qml/FolderSpawner.qml
 )
 
 
