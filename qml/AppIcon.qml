@@ -17,7 +17,7 @@ Item {
     property bool showName: true
     property color labelColor: "white"
     property bool lightTheme: false
-    property bool autoFillTransparentIcons: false
+    property bool showIconBorder: false
     property string iconTone: "original"
     property bool indexedLayout: false
     property int layoutIndex: itemIndex
@@ -86,7 +86,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Math.max(10, width * 0.22)
-            visible: appIcon.autoFillTransparentIcons
+            visible: appIcon.showIconBorder
             color: appIcon.lightTheme ? "#0d000000" : "#10ffffff"
             border.width: Math.max(1, appIcon.iconSize / 48)
             border.color: appIcon.lightTheme ? "#3d000000" : "#52ffffff"
@@ -96,7 +96,7 @@ Item {
         Image {
             id: sourceIcon
             anchors.fill: parent
-            anchors.margins: appIcon.autoFillTransparentIcons
+            anchors.margins: appIcon.showIconBorder
                              ? Math.max(6, appIcon.iconSize * 0.13)
                              : Math.max(2, appIcon.iconSize * 0.04)
             source: item ? item.icon : ""
@@ -211,11 +211,14 @@ Item {
             if (mouse.button !== Qt.LeftButton)
                 return;
 
-            if (!wasDragged || !appIcon.draggable) {
+            if (!wasDragged) {
                 // 左键单击 → 打开文件
                 appIcon.openRequest();
                 return;
             }
+
+            if (!appIcon.draggable)
+                return;
 
             // ---- 拖拽结束: 吸附网格 & 触发排序 ----
             let gridSize = appIcon.cellSize;

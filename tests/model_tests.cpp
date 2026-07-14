@@ -1,5 +1,7 @@
 #include <QtTest>
 #include <QStandardPaths>
+#include <QDir>
+#include <QUuid>
 #include "FolderManager.h"
 #include "FolderData.h"
 
@@ -10,6 +12,16 @@ private slots:
     void initTestCase()
     {
         QStandardPaths::setTestModeEnabled(true);
+        m_dataDir = QDir::tempPath() + "/DeskFolderTests-"
+                    + QUuid::createUuid().toString(QUuid::WithoutBraces);
+        QVERIFY(QDir().mkpath(m_dataDir));
+        qputenv("DESK_FOLDER_DATA_DIR", m_dataDir.toUtf8());
+    }
+
+    void cleanupTestCase()
+    {
+        qunsetenv("DESK_FOLDER_DATA_DIR");
+        QDir(m_dataDir).removeRecursively();
     }
 
     void folderNamesAreValidatedAndUnique()
@@ -36,7 +48,12 @@ private slots:
         QVERIFY(qobject_cast<FolderData *>(object));
         manager.removeFolder(index.row());
     }
+
+private:
+    QString m_dataDir;
 };
 
-QTEST_APPLESS_MAIN(ModelTests)
+// FolderManager uses QStandardPaths and therefore requires a QCoreApplication
+// with application metadata. APPLESS_MAIN leaves the writable test path empty.
+QTEST_GUILESS_MAIN(ModelTests)
 #include "model_tests.moc"

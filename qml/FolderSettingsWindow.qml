@@ -793,9 +793,9 @@ Window {
                                     Layout.preferredHeight: 32
                                     ToggleSwitch {
                                         id: autoFillToggle
-                                        checked: root.folderData && root.folderData.autoFillTransparentIcons
+                                        checked: root.folderData && root.folderData.showIconBorder
                                         onToggled: function(c) {
-                                            if (root.folderData) root.folderData.autoFillTransparentIcons = c;
+                                            if (root.folderData) root.folderData.showIconBorder = c;
                                             root.persist();
                                         }
                                     }

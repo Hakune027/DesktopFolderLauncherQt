@@ -427,8 +427,7 @@ Window {
                     labelColor: root.folderData && root.folderData.backgroundStyle === "white"
                                 ? "#202020" : "white"
                     lightTheme: root.lightTheme
-                    autoFillTransparentIcons: root.folderData
-                                              ? root.folderData.autoFillTransparentIcons : false
+                    showIconBorder: root.folderData ? root.folderData.showIconBorder : false
                     iconTone: root.folderData ? root.folderData.iconTone : "original"
 
                     itemIndex: index

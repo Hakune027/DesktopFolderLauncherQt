@@ -19,6 +19,9 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
 
     QApplication app(argc, argv);
+#ifdef DESK_FOLDER_VERSION
+    app.setApplicationVersion(QStringLiteral(DESK_FOLDER_VERSION));
+#endif
     app.setWindowIcon(QIcon(QStringLiteral(":/qt/qml/DesktopFolderLauncher/assets/icons/app.svg")));
     app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 10));
     app.setQuitOnLastWindowClosed(false);

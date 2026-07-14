@@ -43,7 +43,7 @@ class FolderData : public QObject
     Q_PROPERTY(int gridRows READ gridRows WRITE setGridRows NOTIFY appearanceChanged)
     Q_PROPERTY(bool showFolderName READ showFolderName WRITE setShowFolderName NOTIFY appearanceChanged)
     Q_PROPERTY(bool showIconNames READ showIconNames WRITE setShowIconNames NOTIFY appearanceChanged)
-    Q_PROPERTY(bool autoFillTransparentIcons READ autoFillTransparentIcons WRITE setAutoFillTransparentIcons NOTIFY appearanceChanged)
+    Q_PROPERTY(bool showIconBorder READ showIconBorder WRITE setShowIconBorder NOTIFY appearanceChanged)
     Q_PROPERTY(QString iconTone READ iconTone WRITE setIconTone NOTIFY appearanceChanged)
     Q_PROPERTY(bool allowIconGaps READ allowIconGaps WRITE setAllowIconGaps NOTIFY appearanceChanged)
     Q_PROPERTY(bool lockPosition READ lockPosition WRITE setLockPosition NOTIFY interactionChanged)
@@ -83,7 +83,7 @@ public:
     int gridRows() const;
     bool showFolderName() const;
     bool showIconNames() const;
-    bool autoFillTransparentIcons() const;
+    bool showIconBorder() const;
     QString iconTone() const;
     bool allowIconGaps() const;
     bool lockPosition() const;
@@ -102,7 +102,7 @@ public:
     void setGridRows(int value);
     void setShowFolderName(bool value);
     void setShowIconNames(bool value);
-    void setAutoFillTransparentIcons(bool value);
+    void setShowIconBorder(bool value);
     void setIconTone(const QString &value);
     void setAllowIconGaps(bool value);
     void setLockPosition(bool value);
@@ -144,6 +144,7 @@ signals:
 
     void appearanceChanged();
     void interactionChanged();
+    void persistenceError(const QString &message);
 
 private:
     void updateGridLayout();
@@ -166,7 +167,7 @@ private:
     int m_gridRows = 2;
     bool m_showFolderName = true;
     bool m_showIconNames = true;
-    bool m_autoFillTransparentIcons = false;
+    bool m_showIconBorder = false;
     QString m_iconTone = QStringLiteral("original");
     bool m_allowIconGaps = true;
     bool m_lockPosition = false;

@@ -62,16 +62,10 @@ Item {
             if (!data)
                 continue;
 
-            // 检查是否已有窗口
-            let alreadyCreated = false;
-            for (let key in windowMap) {
-                if (windowMap[key].folderData === data) {
-                    alreadyCreated = true;
-                    break;
-                }
-            }
-
-            if (alreadyCreated)
+            // folderId is stable across deletions and list reordering. Using
+            // the current model index here can overwrite another live window.
+            let key = "folder_" + data.folderId;
+            if (windowMap[key])
                 continue;
 
             let folder = folderComponent.createObject(null, {
@@ -86,7 +80,6 @@ Item {
                     "savedPos=(" + data.windowX + "," + data.windowY + ")"
                 );
 
-                let key = "folder_" + i;
                 windowMap[key] = folder;
 
                 // 窗口关闭时清理
@@ -105,15 +98,8 @@ Item {
                         folderManager.save();
                     }
 
-                    let keysToDel = [];
-                    for (let k in windowMap) {
-                        if (windowMap[k] === folder) {
-                            keysToDel.push(k);
-                        }
-                    }
-                    for (let d = 0; d < keysToDel.length; d++) {
-                        delete windowMap[keysToDel[d]];
-                    }
+                    if (windowMap[key] === folder)
+                        delete windowMap[key];
                     Qt.callLater(function() { folder.destroy(); });
                 });
             }

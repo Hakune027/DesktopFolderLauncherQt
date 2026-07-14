@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     DesktopFolderLauncher
-    VERSION 1.0
+    VERSION 1.0.0
     LANGUAGES CXX
 )
+set(DESK_FOLDER_VERSION "${PROJECT_VERSION}" CACHE STRING "DeskFolder application version")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -118,6 +119,9 @@ target_link_libraries(
     Qt6::Quick
     Qt6::Widgets
     Qt6::QuickControls2
+)
+target_compile_definitions(DesktopFolderLauncher PRIVATE
+    DESK_FOLDER_VERSION="${DESK_FOLDER_VERSION}"
 )
 if(WIN32)
     target_sources(DesktopFolderLauncher PRIVATE resources/app.rc)

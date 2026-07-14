@@ -1,5 +1,15 @@
 build/
+build-*/
 .qtcreator
 CMakeFiles/
 CMakeCache.txt
 .vscode
+/.qt/
+/.rcc/
+/DesktopFolderLauncher/
+/meta_types/
+/qmltypes/
+/Makefile
+/cmake_install.cmake
+/compile_commands.json
+/DesktopFolderLauncher.exe.manifest

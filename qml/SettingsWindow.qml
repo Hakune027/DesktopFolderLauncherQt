@@ -516,7 +516,7 @@ Window {
                         font.weight: Font.DemiBold
                     }
                     Label {
-                        text: "DesktopFolderLauncher  1.0"
+                        text: "DesktopFolderLauncher  " + appController.appVersion
                         color: "#8f909a"
                         font.pixelSize: 13
                     }

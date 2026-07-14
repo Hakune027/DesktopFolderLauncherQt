@@ -98,9 +98,9 @@ void FileManager::compactItems()
 QString FileManager::dataPath()
 {
 
-    QString dir =
-        QStandardPaths::writableLocation(
-            QStandardPaths::AppLocalDataLocation);
+    QString dir = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+    if (dir.isEmpty())
+        dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
 
     QDir().mkpath(dir);
 
@@ -119,9 +119,9 @@ QString FileManager::dataPath()
 QString FileManager::legacyDataPath()
 {
 
-    QString dir =
-        QStandardPaths::writableLocation(
-            QStandardPaths::AppLocalDataLocation);
+    QString dir = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+    if (dir.isEmpty())
+        dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
 
     if (m_folderName.isEmpty())
     {
@@ -253,11 +253,13 @@ bool FileManager::save()
 
         if (file.write(doc.toJson()) < 0 || !file.commit()) {
             qWarning() << "Failed to save folder data:" << file.errorString();
+            emit persistenceError(tr("无法保存文件夹数据：%1").arg(file.errorString()));
             return false;
         }
         return true;
     }
     qWarning() << "Failed to open folder data for writing:" << file.errorString();
+    emit persistenceError(tr("无法写入文件夹数据：%1").arg(file.errorString()));
     return false;
 }
 

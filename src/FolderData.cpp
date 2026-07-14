@@ -41,6 +41,8 @@ FolderData::FolderData(
         &FileManager::itemsChanged,
         this,
         &FolderData::itemsChanged);
+    connect(m_fileManager, &FileManager::persistenceError,
+            this, &FolderData::persistenceError);
 }
 
 QString FolderData::name() const
@@ -87,7 +89,7 @@ void FolderData::updateGridLayout()
 }
 bool FolderData::showFolderName() const { return m_showFolderName; }
 bool FolderData::showIconNames() const { return m_showIconNames; }
-bool FolderData::autoFillTransparentIcons() const { return m_autoFillTransparentIcons; }
+bool FolderData::showIconBorder() const { return m_showIconBorder; }
 QString FolderData::iconTone() const { return m_iconTone; }
 bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
@@ -208,11 +210,11 @@ void FolderData::setShowIconNames(bool value)
     emit appearanceChanged();
 }
 
-void FolderData::setAutoFillTransparentIcons(bool value)
+void FolderData::setShowIconBorder(bool value)
 {
-    if (m_autoFillTransparentIcons == value)
+    if (m_showIconBorder == value)
         return;
-    m_autoFillTransparentIcons = value;
+    m_showIconBorder = value;
     emit appearanceChanged();
 }
 

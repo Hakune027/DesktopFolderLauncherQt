@@ -41,6 +41,7 @@ public:
 signals:
 
     void foldersChanged();
+    void persistenceError(const QString &message);
 
 private:
     QString configPath();

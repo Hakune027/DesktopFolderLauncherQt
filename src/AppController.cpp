@@ -37,3 +37,8 @@ void AppController::setAutoStartEnabled(bool enabled)
     Q_UNUSED(enabled);
 #endif
 }
+
+QString AppController::appVersion() const
+{
+    return QCoreApplication::applicationVersion();
+}

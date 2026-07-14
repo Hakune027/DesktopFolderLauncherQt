@@ -35,9 +35,9 @@ QHash<int, QByteArray> FolderManager::roleNames() const { return {{FolderRole, "
 QString FolderManager::configPath()
 {
 
-    QString dir =
-        QStandardPaths::writableLocation(
-            QStandardPaths::AppLocalDataLocation);
+    QString dir = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+    if (dir.isEmpty())
+        dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
 
     QDir().mkpath(dir);
 
@@ -65,7 +65,13 @@ void FolderManager::createFolder(
     m_folders.append(folder);
     endInsertRows();
 
-    save();
+    if (!save()) {
+        beginRemoveRows({}, m_folders.size() - 1, m_folders.size() - 1);
+        m_folders.removeLast();
+        endRemoveRows();
+        folder->deleteLater();
+        return;
+    }
 
     emit foldersChanged();
 }
@@ -81,43 +87,33 @@ void FolderManager::removeFolder(
         return;
     }
 
-    // 删除该文件夹的数据文件(使用 folderId)
     FolderData *folder = m_folders[index];
-
-    if (folder)
-    {
-        QString dir =
-            QStandardPaths::writableLocation(
-                QStandardPaths::AppLocalDataLocation);
-
-        QString dataFile =
-            dir +
-            "/" +
-            folder->folderId() +
-            ".json";
-
-        QFile::remove(dataFile);
-
-        // 同时清理旧版 name.json (如果存在)
-        QString legacyFile =
-            dir +
-            "/" +
-            folder->name() +
-            ".json";
-
-        if (legacyFile != dataFile)
-        {
-            QFile::remove(legacyFile);
-        }
-    }
-
     beginRemoveRows({}, index, index);
     FolderData *obj = m_folders.takeAt(index);
     endRemoveRows();
 
-    obj->deleteLater();
+    if (!save()) {
+        beginInsertRows({}, index, index);
+        m_folders.insert(index, obj);
+        endInsertRows();
+        emit foldersChanged();
+        return;
+    }
 
-    save();
+    // Only delete the instance data after the new folder list is durably
+    // committed. A failed metadata save must not orphan the folder.
+    if (folder) {
+        QString dir = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+        if (dir.isEmpty())
+            dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        const QString dataFile = dir + "/" + folder->folderId() + ".json";
+        QFile::remove(dataFile);
+        const QString legacyFile = dir + "/" + folder->name() + ".json";
+        if (legacyFile != dataFile)
+            QFile::remove(legacyFile);
+    }
+
+    obj->deleteLater();
 
     emit foldersChanged();
 }
@@ -244,7 +240,9 @@ void FolderManager::load()
         folder->setGridRows(obj.value("gridRows").toInt(2));
         folder->setShowFolderName(obj.value("showFolderName").toBool(true));
         folder->setShowIconNames(obj.value("showIconNames").toBool(true));
-        folder->setAutoFillTransparentIcons(obj.value("autoFillTransparentIcons").toBool(false));
+        folder->setShowIconBorder(obj.contains("showIconBorder")
+            ? obj.value("showIconBorder").toBool(false)
+            : obj.value("autoFillTransparentIcons").toBool(false));
         folder->setIconTone(obj.value("iconTone").toString("original"));
         folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
@@ -300,7 +298,7 @@ bool FolderManager::save()
         json["gridRows"] = folder->gridRows();
         json["showFolderName"] = folder->showFolderName();
         json["showIconNames"] = folder->showIconNames();
-        json["autoFillTransparentIcons"] = folder->autoFillTransparentIcons();
+        json["showIconBorder"] = folder->showIconBorder();
         json["iconTone"] = folder->iconTone();
         json["allowIconGaps"] = folder->allowIconGaps();
         json["lockPosition"] = folder->lockPosition();
@@ -332,10 +330,12 @@ bool FolderManager::save()
 
         if (file.write(doc.toJson()) < 0 || !file.commit()) {
             qWarning() << "Failed to save folder configuration:" << file.errorString();
+            emit persistenceError(tr("无法保存文件夹配置：%1").arg(file.errorString()));
             return false;
         }
         return true;
     }
     qWarning() << "Failed to open folder configuration for writing:" << file.errorString();
+    emit persistenceError(tr("无法写入文件夹配置：%1").arg(file.errorString()));
     return false;
 }

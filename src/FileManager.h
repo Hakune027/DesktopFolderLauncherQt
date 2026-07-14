@@ -58,6 +58,7 @@ public:
 signals:
 
     void itemsChanged();
+    void persistenceError(const QString &message);
 
 private:
     void compactItems();
