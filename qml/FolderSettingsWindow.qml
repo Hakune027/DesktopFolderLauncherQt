@@ -284,7 +284,17 @@ Window {
                             Label { text: "显示内容"; font.pixelSize: 16; font.weight: Font.DemiBold; Layout.bottomMargin: 4 }
                             CheckBox { text: "显示文件夹名称"; checked: !root.folderData || root.folderData.showFolderName; onClicked: { if (root.folderData) root.folderData.showFolderName = checked; root.persist(); } }
                             CheckBox { text: "显示图标名称"; checked: !root.folderData || root.folderData.showIconNames; onClicked: { if (root.folderData) root.folderData.showIconNames = checked; root.persist(); } }
-                            CheckBox { text: "显示图标背景阴影"; checked: !root.folderData || root.folderData.showIconShadow; onClicked: { if (root.folderData) root.folderData.showIconShadow = checked; root.persist(); } }
+                            CheckBox {
+                                text: "自动填充透明图标背景"
+                                checked: root.folderData && root.folderData.autoFillTransparentIcons
+                                onClicked: {
+                                    if (root.folderData)
+                                        root.folderData.autoFillTransparentIcons = checked;
+                                    root.persist();
+                                }
+                                ToolTip.visible: hovered
+                                ToolTip.text: "仅为透明区域较多的图标添加自适应底色，不影响不透明图标"
+                            }
                         }
                     }
                     Rectangle {

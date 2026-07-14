@@ -240,7 +240,7 @@ void FolderManager::load()
         folder->setGridRows(obj.value("gridRows").toInt(2));
         folder->setShowFolderName(obj.value("showFolderName").toBool(true));
         folder->setShowIconNames(obj.value("showIconNames").toBool(true));
-        folder->setShowIconShadow(obj.value("showIconShadow").toBool(true));
+        folder->setAutoFillTransparentIcons(obj.value("autoFillTransparentIcons").toBool(false));
         folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
         folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
@@ -295,7 +295,7 @@ bool FolderManager::save()
         json["gridRows"] = folder->gridRows();
         json["showFolderName"] = folder->showFolderName();
         json["showIconNames"] = folder->showIconNames();
-        json["showIconShadow"] = folder->showIconShadow();
+        json["autoFillTransparentIcons"] = folder->autoFillTransparentIcons();
         json["allowIconGaps"] = folder->allowIconGaps();
         json["lockPosition"] = folder->lockPosition();
         json["frostedGlass"] = folder->frostedGlass();

@@ -16,7 +16,7 @@ Item {
     property bool showName: true
     property color labelColor: "white"
     property bool lightTheme: false
-    property bool showIconShadow: true
+    property bool autoFillTransparentIcons: false
     property real entryScale: 0.88
 
     // 信号: 由 FolderWindow 处理
@@ -56,19 +56,25 @@ Item {
         Behavior on border.width { NumberAnimation { duration: 100 } }
     }
 
-    Rectangle {
+    Item {
         width: appIcon.iconSize
         height: appIcon.iconSize
-        radius: Math.max(10, appIcon.iconSize * 0.22)
-        color: appIcon.showIconShadow
-               ? (appIcon.lightTheme ? "#08000000" : "#10ffffff")
-               : "transparent"
-        Behavior on color { ColorAnimation { duration: 140 } }
 
         // 拖动时半透明
         opacity: dragArea.drag.active ? 0.82 : 1.0
         Behavior on opacity {
             NumberAnimation { duration: 150 }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Math.max(10, width * 0.22)
+            visible: appIcon.autoFillTransparentIcons
+                     && appIcon.item && appIcon.item.iconHasTransparency
+            color: appIcon.lightTheme ? "#24000000" : "#32ffffff"
+            border.width: 1
+            border.color: appIcon.lightTheme ? "#18000000" : "#20ffffff"
+            Behavior on color { ColorAnimation { duration: 140 } }
         }
 
         Image {

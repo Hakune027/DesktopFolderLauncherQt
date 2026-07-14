@@ -87,7 +87,7 @@ void FolderData::updateGridLayout()
 }
 bool FolderData::showFolderName() const { return m_showFolderName; }
 bool FolderData::showIconNames() const { return m_showIconNames; }
-bool FolderData::showIconShadow() const { return m_showIconShadow; }
+bool FolderData::autoFillTransparentIcons() const { return m_autoFillTransparentIcons; }
 bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
 bool FolderData::frostedGlass() const { return m_frostedGlass; }
@@ -191,11 +191,11 @@ void FolderData::setShowIconNames(bool value)
     emit appearanceChanged();
 }
 
-void FolderData::setShowIconShadow(bool value)
+void FolderData::setAutoFillTransparentIcons(bool value)
 {
-    if (m_showIconShadow == value)
+    if (m_autoFillTransparentIcons == value)
         return;
-    m_showIconShadow = value;
+    m_autoFillTransparentIcons = value;
     emit appearanceChanged();
 }
 
@@ -235,6 +235,7 @@ void FolderData::setBorderStyle(const QString &value)
     m_borderStyle = normalized;
     emit appearanceChanged();
 }
+
 
 
 void FolderData::setWindowPosition(
