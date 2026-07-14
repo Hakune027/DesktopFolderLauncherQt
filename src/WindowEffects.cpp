@@ -52,7 +52,9 @@ WindowEffects::WindowEffects(QObject *parent)
 {
 #ifdef Q_OS_WIN
     m_desktopClickTimer = new QTimer(this);
-    m_desktopClickTimer->setInterval(30);
+    // Desktop folders only need click-dismissal responsiveness, not frame-rate
+    // polling. A 50 ms interval reduces permanent CPU wakeups substantially.
+    m_desktopClickTimer->setInterval(50);
     connect(m_desktopClickTimer, &QTimer::timeout, this, [this] {
         const bool down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
         if (down && !m_leftButtonDown) {

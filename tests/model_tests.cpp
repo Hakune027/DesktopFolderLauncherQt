@@ -86,6 +86,27 @@ private slots:
         manager.removeFolder(manager.rowCount() - 1);
     }
 
+    void detailedDefaultEditorStaysInSync()
+    {
+        FolderManager manager;
+        auto *defaults = qobject_cast<FolderData *>(manager.defaultFolderData());
+        QVERIFY(defaults);
+        defaults->setGridColumns(5);
+        defaults->setGridRows(4);
+        defaults->setIconSize(80);
+        QCOMPARE(manager.defaultGridColumns(), 5);
+        QCOMPARE(manager.defaultGridRows(), 4);
+        QCOMPARE(manager.defaultIconSize(), 80);
+
+        manager.createFolder("Synced Defaults Folder");
+        auto *folder = qobject_cast<FolderData *>(manager.folderAt(manager.rowCount() - 1));
+        QVERIFY(folder);
+        QCOMPARE(folder->gridColumns(), 5);
+        QCOMPARE(folder->gridRows(), 4);
+        QCOMPARE(folder->iconSize(), 80);
+        manager.removeFolder(manager.rowCount() - 1);
+    }
+
 private:
     QString m_dataDir;
 };

@@ -1,6 +1,7 @@
 #include "FolderManager.h"
 
 #include "FolderData.h"
+#include "IconProvider.h"
 
 #include <QDebug>
 #include <QDir>
@@ -14,6 +15,37 @@
 #include <QJsonParseError>
 #include <QRegularExpression>
 #include <utility>
+#include <QTimer>
+#include <QUrl>
+#include <QSet>
+
+namespace {
+QStringList cachedIconsFromFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    QStringList icons;
+    for (const QJsonValue &value : document.array()) {
+        const QString icon = value.toObject().value(QStringLiteral("icon")).toString();
+        if (!icon.isEmpty())
+            icons.append(icon);
+    }
+    return icons;
+}
+
+bool cachedIconIsReferenced(const QString &icon, const QString &foldersPath)
+{
+    const QFileInfoList files = QDir(foldersPath).entryInfoList(
+        {QStringLiteral("*.json")}, QDir::Files | QDir::Readable);
+    for (const QFileInfo &file : files) {
+        if (cachedIconsFromFile(file.absoluteFilePath()).contains(icon))
+            return true;
+    }
+    return false;
+}
+}
 
 FolderManager::FolderManager(QObject *parent)
     : QAbstractListModel(parent)
@@ -22,16 +54,73 @@ FolderManager::FolderManager(QObject *parent)
     m_defaultFolder = new FolderData(QStringLiteral("新建文件夹默认设置"),
                                      QStringLiteral("__folder_defaults__"), this);
     applyDefaultsToFolder(m_defaultFolder);
+    m_defaultsSaveTimer = new QTimer(this);
+    m_defaultsSaveTimer->setSingleShot(true);
+    m_defaultsSaveTimer->setInterval(250);
+    connect(m_defaultsSaveTimer, &QTimer::timeout, this, [this] { saveDefaults(); });
     connect(m_defaultFolder, &FolderData::appearanceChanged,
-            this, [this] { saveDefaults(); emit defaultSettingsChanged(); });
+            this, [this] {
+        syncDefaultMembers();
+        m_defaultsDirty = true;
+        m_defaultsSaveTimer->start();
+        emit defaultSettingsChanged();
+    });
     connect(m_defaultFolder, &FolderData::interactionChanged,
-            this, [this] { saveDefaults(); emit defaultSettingsChanged(); });
+            this, [this] {
+        syncDefaultMembers();
+        m_defaultsDirty = true;
+        m_defaultsSaveTimer->start();
+        emit defaultSettingsChanged();
+    });
     load();
+}
+
+FolderManager::~FolderManager()
+{
+    if (m_defaultsDirty)
+        saveDefaults();
 }
 
 QObject *FolderManager::defaultFolderData() const
 {
     return m_defaultFolder;
+}
+
+void FolderManager::syncDefaultMembers()
+{
+    if (!m_defaultFolder)
+        return;
+    m_defaultGridColumns = m_defaultFolder->gridColumns();
+    m_defaultGridRows = m_defaultFolder->gridRows();
+    m_defaultIconSize = m_defaultFolder->iconSize();
+    m_defaultIconSpacing = m_defaultFolder->iconSpacing();
+    m_defaultEdgePadding = m_defaultFolder->edgePadding();
+    m_defaultOverflowMode = m_defaultFolder->overflowMode();
+    m_defaultFrostedGlass = m_defaultFolder->frostedGlass();
+}
+
+void FolderManager::cleanupUnusedCovers() const
+{
+    QSet<QString> usedPaths;
+    const auto rememberCover = [&usedPaths](const QString &cover) {
+        const QUrl url(cover);
+        if (url.isLocalFile())
+            usedPaths.insert(QDir::cleanPath(url.toLocalFile()).toLower());
+    };
+    rememberCover(m_defaultFolder ? m_defaultFolder->overflowCover() : QString());
+    for (const FolderData *folder : m_folders)
+        if (folder)
+            rememberCover(folder->overflowCover());
+
+    QDir dataDirectory = QFileInfo(configPath()).dir();
+    dataDirectory.cdUp();
+    QDir coverDirectory(dataDirectory.filePath(QStringLiteral("covers")));
+    const QFileInfoList covers = coverDirectory.entryInfoList(
+        {QStringLiteral("cover_*.png")}, QDir::Files);
+    for (const QFileInfo &cover : covers) {
+        if (!usedPaths.contains(QDir::cleanPath(cover.absoluteFilePath()).toLower()))
+            QFile::remove(cover.absoluteFilePath());
+    }
 }
 
 int FolderManager::rowCount(const QModelIndex &parent) const { return parent.isValid() ? 0 : m_folders.size(); }
@@ -81,7 +170,15 @@ void FolderManager::loadDefaults()
     QFile file(defaultsPath());
     if (!file.open(QIODevice::ReadOnly))
         return;
-    const QJsonObject object = QJsonDocument::fromJson(file.readAll()).object();
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !document.isObject()) {
+        qWarning() << "Invalid default folder configuration, preserving file:"
+                   << file.fileName() << error.errorString();
+        QFile::copy(file.fileName(), file.fileName() + QStringLiteral(".corrupt"));
+        return;
+    }
+    const QJsonObject object = document.object();
     m_defaultGridColumns = qBound(1, object.value("gridColumns").toInt(3), 12);
     m_defaultGridRows = qBound(1, object.value("gridRows").toInt(2), 12);
     m_defaultIconSize = qBound(32, object.value("iconSize").toInt(64), 96);
@@ -93,6 +190,8 @@ void FolderManager::loadDefaults()
 
 bool FolderManager::saveDefaults()
 {
+    if (!m_defaultsDirty)
+        return true;
     QJsonObject object;
     const FolderData *folder = m_defaultFolder;
     object["gridColumns"] = folder ? folder->gridColumns() : m_defaultGridColumns;
@@ -121,11 +220,13 @@ bool FolderManager::saveDefaults()
         emit persistenceError(tr("无法保存默认文件夹设置：%1").arg(file.errorString()));
         return false;
     }
-    file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
-    if (!file.commit()) {
+    if (file.write(QJsonDocument(object).toJson(QJsonDocument::Indented)) < 0
+        || !file.commit()) {
         emit persistenceError(tr("无法保存默认文件夹设置：%1").arg(file.errorString()));
         return false;
     }
+    m_defaultsDirty = false;
+    cleanupUnusedCovers();
     return true;
 }
 
@@ -133,10 +234,36 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
 {
     if (!folder)
         return;
+    if (m_defaultFolder && folder != m_defaultFolder) {
+        const FolderData *defaults = m_defaultFolder;
+        folder->beginRestore();
+        folder->setOverflowMode(defaults->overflowMode());
+        folder->setGridColumns(defaults->gridColumns());
+        folder->setGridRows(defaults->gridRows());
+        folder->setIconSize(defaults->iconSize());
+        folder->setIconSpacing(defaults->iconSpacing());
+        folder->setEdgePadding(defaults->edgePadding());
+        folder->setFrostedGlass(defaults->frostedGlass());
+        folder->setCornerRadius(defaults->cornerRadius());
+        folder->setBackgroundStyle(defaults->backgroundStyle());
+        folder->setBackgroundOpacity(defaults->backgroundOpacity());
+        folder->setShowFolderName(defaults->showFolderName());
+        folder->setShowIconNames(defaults->showIconNames());
+        folder->setShowIconBorder(defaults->showIconBorder());
+        folder->setIconTone(defaults->iconTone());
+        folder->setAllowIconGaps(defaults->allowIconGaps());
+        folder->setLockPosition(defaults->lockPosition());
+        folder->setBorderStyle(defaults->borderStyle());
+        folder->setExpansionDirection(defaults->expansionDirection());
+        folder->setOverflowCover(defaults->overflowCover());
+        folder->endRestore();
+        return;
+    }
     QFile file(defaultsPath());
     QJsonObject object;
     if (file.open(QIODevice::ReadOnly))
         object = QJsonDocument::fromJson(file.readAll()).object();
+    folder->beginRestore();
     folder->setOverflowMode(object.value("overflowMode").toBool(m_defaultOverflowMode));
     folder->setGridColumns(object.value("gridColumns").toInt(m_defaultGridColumns));
     folder->setGridRows(object.value("gridRows").toInt(m_defaultGridRows));
@@ -156,6 +283,19 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
     folder->setBorderStyle(object.value("borderStyle").toString("subtle"));
     folder->setExpansionDirection(object.value("expansionDirection").toString("down"));
     folder->setOverflowCover(object.value("overflowCover").toString());
+    folder->endRestore();
+}
+
+void FolderManager::trackFolder(FolderData *folder)
+{
+    if (!folder)
+        return;
+    connect(folder, &FolderData::persistenceError,
+            this, &FolderManager::persistenceError);
+    const auto markDirty = [this] { m_dirty = true; };
+    connect(folder, &FolderData::windowPositionChanged, this, markDirty);
+    connect(folder, &FolderData::appearanceChanged, this, markDirty);
+    connect(folder, &FolderData::interactionChanged, this, markDirty);
 }
 
 #define DEFINE_DEFAULT_SETTER(Name, Member, Min, Max) \
@@ -220,19 +360,21 @@ void FolderManager::createFolder(
         new FolderData(
             name,
             this);
-    connect(folder, &FolderData::persistenceError,
-            this, &FolderManager::persistenceError);
     applyDefaultsToFolder(folder);
+    trackFolder(folder);
 
     beginInsertRows({}, m_folders.size(), m_folders.size());
     m_folders.append(folder);
     endInsertRows();
 
+    const bool wasDirty = m_dirty;
+    m_dirty = true;
     if (!save()) {
         beginRemoveRows({}, m_folders.size() - 1, m_folders.size() - 1);
         m_folders.removeLast();
         endRemoveRows();
         folder->deleteLater();
+        m_dirty = wasDirty;
         return;
     }
 
@@ -251,14 +393,17 @@ void FolderManager::removeFolder(
     }
 
     FolderData *folder = m_folders[index];
+    const bool wasDirty = m_dirty;
     beginRemoveRows({}, index, index);
     FolderData *obj = m_folders.takeAt(index);
     endRemoveRows();
 
+    m_dirty = true;
     if (!save()) {
         beginInsertRows({}, index, index);
         m_folders.insert(index, obj);
         endInsertRows();
+        m_dirty = wasDirty;
         emit foldersChanged();
         return;
     }
@@ -271,13 +416,20 @@ void FolderManager::removeFolder(
             dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
         const QString dataFile = QDir(dir).filePath(
             QStringLiteral("folders/%1.json").arg(folder->folderId()));
+        const QStringList cachedIcons = cachedIconsFromFile(dataFile);
         QFile::remove(dataFile);
         QFile::remove(QDir(dir).filePath(folder->folderId() + QStringLiteral(".json")));
         QFile::remove(QDir(dir).filePath(folder->name() + QStringLiteral(".json")));
+        const QString foldersPath = QFileInfo(dataFile).absolutePath();
+        for (const QString &icon : cachedIcons) {
+            if (!cachedIconIsReferenced(icon, foldersPath))
+                IconProvider::removeCachedIcon(icon);
+        }
     }
 
     obj->deleteLater();
 
+    cleanupUnusedCovers();
     emit foldersChanged();
 }
 
@@ -303,6 +455,7 @@ QObject *FolderManager::folderAt(
 
 void FolderManager::load()
 {
+    m_dirty = false;
 
     QFile file(configPath());
 
@@ -332,8 +485,7 @@ void FolderManager::load()
     QJsonArray array =
         doc.array();
 
-    qDebug()
-        << "[FolderManager] load >>>";
+    bool migratedData = false;
 
     beginResetModel();
     qDeleteAll(m_folders);
@@ -360,6 +512,7 @@ void FolderManager::load()
                 QUuid::createUuid()
                     .toString(
                         QUuid::WithoutBraces);
+            migratedData = true;
         }
 
         int wx = -1;
@@ -373,21 +526,12 @@ void FolderManager::load()
             wy = obj["windowY"].toInt();
         }
 
-        qDebug()
-            << "  "
-            << name
-            << folderId
-            << "pos:"
-            << wx << wy;
-
         FolderData *folder =
             new FolderData(
                 name,
                 folderId,
                 this);
-        connect(folder, &FolderData::persistenceError,
-                this, &FolderManager::persistenceError);
-
+        folder->beginRestore();
         folder->setWindowPosition(
             wx,
             wy);
@@ -408,6 +552,8 @@ void FolderManager::load()
                               QStringLiteral("assets/covers/multitask.svg"));
         overflowCover.replace(QStringLiteral("assets/covers/mint.svg"),
                               QStringLiteral("assets/covers/projects.svg"));
+        if (overflowCover != obj.value("overflowCover").toString())
+            migratedData = true;
         folder->setOverflowCover(overflowCover);
         folder->setGridColumns(obj.value("gridColumns").toInt(3));
         folder->setGridRows(obj.value("gridRows").toInt(2));
@@ -421,27 +567,29 @@ void FolderManager::load()
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
         folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
         folder->setBorderStyle(obj.value("borderStyle").toString("subtle"));
+        folder->endRestore();
+        trackFolder(folder);
 
         m_folders.append(folder);
     }
-
-    qDebug()
-        << "[FolderManager] load <<<";
 
     endResetModel();
     emit foldersChanged();
 
     // 如果旧版配置缺少 id, 立即保存以固化 UUID
-    save();
+    m_dirty = migratedData;
+    if (migratedData)
+        save();
 }
 
 bool FolderManager::save()
 {
+    if (m_defaultsDirty && !saveDefaults())
+        return false;
+    if (!m_dirty)
+        return true;
 
     QJsonArray array;
-
-    qDebug()
-        << "[FolderManager] save >>>";
 
     for (FolderData *folder : m_folders)
     {
@@ -481,19 +629,8 @@ bool FolderManager::save()
         json["expansionDirection"] = folder->expansionDirection();
         json["overflowCover"] = folder->overflowCover();
 
-        qDebug()
-            << "  "
-            << folder->name()
-            << folder->folderId()
-            << "pos:"
-            << folder->windowX()
-            << folder->windowY();
-
         array.append(json);
     }
-
-    qDebug()
-        << "[FolderManager] save <<<";
 
     QJsonDocument doc(array);
 
@@ -507,6 +644,8 @@ bool FolderManager::save()
             emit persistenceError(tr("无法保存文件夹配置：%1").arg(file.errorString()));
             return false;
         }
+        m_dirty = false;
+        cleanupUnusedCovers();
         return true;
     }
     qWarning() << "Failed to open folder configuration for writing:" << file.errorString();

@@ -23,6 +23,9 @@ public:
                        int columns, int rows, bool reflow = true);
     void setAllowGaps(bool value);
     void setAllowOverflow(bool value);
+    void restoreLayoutSettings(int horizontalGridSize, int verticalGridSize,
+                               int columns, int rows, bool allowGaps,
+                               bool allowOverflow);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;

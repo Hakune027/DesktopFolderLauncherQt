@@ -20,7 +20,11 @@ bool AppController::autoStartEnabled() const
 {
 #ifdef Q_OS_WIN
     QSettings settings(QString::fromLatin1(runKey), QSettings::NativeFormat);
-    return !settings.value(QString::fromLatin1(valueName)).toString().isEmpty();
+    QString configured = settings.value(QString::fromLatin1(valueName)).toString().trimmed();
+    if (configured.startsWith(QLatin1Char('"')) && configured.endsWith(QLatin1Char('"')))
+        configured = configured.mid(1, configured.size() - 2);
+    const QString executable = QDir::cleanPath(QCoreApplication::applicationFilePath());
+    return QDir::cleanPath(configured).compare(executable, Qt::CaseInsensitive) == 0;
 #else
     return false;
 #endif
@@ -29,9 +33,11 @@ bool AppController::autoStartEnabled() const
 void AppController::setAutoStartEnabled(bool enabled)
 {
 #ifdef Q_OS_WIN
-    if (autoStartEnabled() == enabled)
-        return;
     QSettings settings(QString::fromLatin1(runKey), QSettings::NativeFormat);
+    if (enabled && autoStartEnabled())
+        return;
+    if (!enabled && !settings.contains(QString::fromLatin1(valueName)))
+        return;
     if (enabled) {
         const QString executable = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
         settings.setValue(QString::fromLatin1(valueName), QStringLiteral("\"") + executable + QStringLiteral("\""));

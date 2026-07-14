@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QDir>
 #include <QPoint>
+#include <QVector>
 
 #include <QStandardPaths>
 #include <QSaveFile>
@@ -102,6 +103,18 @@ void FileManager::setAllowGaps(bool value)
 void FileManager::setAllowOverflow(bool value)
 {
     m_allowOverflow = value;
+}
+
+void FileManager::restoreLayoutSettings(int horizontalGridSize, int verticalGridSize,
+                                        int columns, int rows, bool allowGaps,
+                                        bool allowOverflow)
+{
+    m_horizontalGridSize = qMax(40, horizontalGridSize);
+    m_verticalGridSize = qMax(40, verticalGridSize);
+    m_gridColumns = qMax(1, columns);
+    m_gridRows = qMax(1, rows);
+    m_allowGaps = allowGaps;
+    m_allowOverflow = allowOverflow;
 }
 
 void FileManager::compactItems()
@@ -227,7 +240,16 @@ void FileManager::addFile(QString path)
     m_items.append(item);
     endInsertRows();
 
-    save();
+    if (!save()) {
+        beginRemoveRows({}, m_items.size() - 1, m_items.size() - 1);
+        m_items.removeLast();
+        endRemoveRows();
+        item->deleteLater();
+        const QFileInfo currentConfig(dataPath());
+        if (!iconIsReferencedByFolderConfig(iconPath, currentConfig.absolutePath()))
+            IconProvider::removeCachedIcon(iconPath);
+        return;
+    }
 
     emit itemsChanged();
 }
@@ -353,6 +375,7 @@ void FileManager::load()
     QList<QPoint> occupied;
     const int maxCols = m_gridColumns;
 
+    bool repairedData = false;
     beginResetModel();
     for (auto value : array)
     {
@@ -365,11 +388,15 @@ void FileManager::load()
 
         QFileInfo info(path);
 
-        if (!info.exists())
+        if (!info.exists()) {
+            repairedData = true;
             continue;
+        }
 
         QString icon =
             IconProvider::getIcon(path);
+        if (icon != obj.value(QStringLiteral("icon")).toString())
+            repairedData = true;
 
         int x = obj["x"].toInt();
         int y = obj["y"].toInt();
@@ -377,6 +404,7 @@ void FileManager::load()
         // 检测位置冲突，冲突时自动找空位
         QPoint pos(x, y);
         if (occupied.contains(pos)) {
+            repairedData = true;
             bool found = false;
             for (int row = 0; !found; row++) {
                 for (int col = 0; col < maxCols; col++) {
@@ -410,7 +438,8 @@ void FileManager::load()
     emit itemsChanged();
 
     // 如果加载时有位置冲突被修正，持久化保存
-    save();
+    if (repairedData)
+        save();
 }
 
 void FileManager::removeFile(int index)
@@ -423,21 +452,34 @@ void FileManager::removeFile(int index)
     }
 
     const QString removedIcon = m_items.at(index)->icon();
+    QVector<QPoint> originalPositions;
+    originalPositions.reserve(m_items.size());
+    for (const AppItem *item : std::as_const(m_items))
+        originalPositions.append(QPoint(item->x(), item->y()));
 
     beginRemoveRows({}, index, index);
     AppItem *obj = m_items.takeAt(index);
     endRemoveRows();
 
-    obj->deleteLater();
-
     if (!m_allowGaps)
         compactItems();
 
-    if (save()) {
-        const QFileInfo currentConfig(dataPath());
-        if (!iconIsReferencedByFolderConfig(removedIcon, currentConfig.absolutePath()))
-            IconProvider::removeCachedIcon(removedIcon);
+    if (!save()) {
+        beginInsertRows({}, index, index);
+        m_items.insert(index, obj);
+        endInsertRows();
+        for (int i = 0; i < m_items.size(); ++i) {
+            m_items.at(i)->setX(originalPositions.at(i).x());
+            m_items.at(i)->setY(originalPositions.at(i).y());
+        }
+        emit itemsChanged();
+        return;
     }
+
+    obj->deleteLater();
+    const QFileInfo currentConfig(dataPath());
+    if (!iconIsReferencedByFolderConfig(removedIcon, currentConfig.absolutePath()))
+        IconProvider::removeCachedIcon(removedIcon);
 
     emit itemsChanged();
 }
@@ -479,7 +521,13 @@ void FileManager::moveItem(
     m_items.move(from, to);
     endMoveRows();
 
-    save();
+    if (!save()) {
+        beginResetModel();
+        m_items.move(to, from);
+        endResetModel();
+        emit itemsChanged();
+        return;
+    }
 
     emit itemsChanged();
 }
@@ -488,6 +536,10 @@ void FileManager::moveItemToPosition(int index, int x, int y)
 {
     if (index < 0 || index >= m_items.size())
         return;
+    QVector<QPoint> originalPositions;
+    originalPositions.reserve(m_items.size());
+    for (const AppItem *item : std::as_const(m_items))
+        originalPositions.append(QPoint(item->x(), item->y()));
     AppItem *dragged = m_items.at(index);
     AppItem *target = nullptr;
     for (int i = 0; i < m_items.size(); ++i) {
@@ -506,5 +558,10 @@ void FileManager::moveItemToPosition(int index, int x, int y)
     }
     if (!m_allowGaps)
         compactItems();
-    save();
+    if (!save()) {
+        for (int i = 0; i < m_items.size(); ++i) {
+            m_items.at(i)->setX(originalPositions.at(i).x());
+            m_items.at(i)->setY(originalPositions.at(i).y());
+        }
+    }
 }

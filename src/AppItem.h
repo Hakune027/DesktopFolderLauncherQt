@@ -23,8 +23,6 @@ class AppItem : public QObject
             READ icon
                 CONSTANT)
 
-    Q_PROPERTY(bool iconHasTransparency READ iconHasTransparency CONSTANT)
-
     // 新增位置属性
 
     Q_PROPERTY(
@@ -51,7 +49,6 @@ public:
     QString path() const;
 
     QString icon() const;
-    bool iconHasTransparency() const;
 
     int x() const;
 
@@ -76,7 +73,6 @@ private:
     QString m_path;
 
     QString m_icon;
-    bool m_iconHasTransparency = false;
 
     int m_x = 0;
 

@@ -79,17 +79,7 @@ QIcon shellIconWithoutOverlay(const QFileInfo &fileInfo)
 
 QString IconProvider::getIcon(const QString &filePath)
 {
-
     QFileInfo info(filePath);
-
-    QIcon icon;
-#ifdef Q_OS_WIN
-    icon = shellIconWithoutOverlay(info);
-#endif
-    if (icon.isNull()) {
-        QFileIconProvider provider;
-        icon = provider.icon(info);
-    }
 
     QString cachePath =
         QStandardPaths::writableLocation(
@@ -108,12 +98,20 @@ QString IconProvider::getIcon(const QString &filePath)
         QCryptographicHash::Sha256).toHex();
     QString savePath = cachePath + "/" + QString::fromLatin1(cacheKey) + ".png";
 
-    if (!QFileInfo::exists(savePath) && !icon.pixmap(256, 256).save(savePath))
-        return QString();
+    if (QFileInfo::exists(savePath))
+        return QUrl::fromLocalFile(savePath).toString();
 
-    qDebug()
-        << "Icon saved:"
-        << savePath;
+    QIcon icon;
+#ifdef Q_OS_WIN
+    icon = shellIconWithoutOverlay(info);
+#endif
+    if (icon.isNull()) {
+        QFileIconProvider provider;
+        icon = provider.icon(info);
+    }
+
+    if (icon.isNull() || !icon.pixmap(256, 256).save(savePath))
+        return QString();
 
     return QUrl::fromLocalFile(savePath).toString();
 }

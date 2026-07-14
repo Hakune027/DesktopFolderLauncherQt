@@ -128,6 +128,7 @@ target_link_libraries(
 )
 target_compile_definitions(DesktopFolderLauncher PRIVATE
     DESK_FOLDER_VERSION="${DESK_FOLDER_VERSION}"
+    $<$<CONFIG:Release>:QT_NO_DEBUG_OUTPUT>
 )
 set_target_properties(DesktopFolderLauncher PROPERTIES WIN32_EXECUTABLE TRUE)
 if(WIN32)
@@ -151,6 +152,7 @@ if(BUILD_TESTING)
         src/FolderData.cpp src/FolderData.h
         src/FolderManager.cpp src/FolderManager.h
     )
+    set_target_properties(DesktopFolderLauncherTests PROPERTIES WIN32_EXECUTABLE FALSE)
     target_include_directories(DesktopFolderLauncherTests PRIVATE src)
     target_link_libraries(DesktopFolderLauncherTests PRIVATE
         Qt6::Core Qt6::Gui Qt6::Qml Qt6::Widgets Qt6::Test)

@@ -2,7 +2,6 @@
 
 #include <QDesktopServices>
 #include <QUrl>
-#include <QImage>
 
 AppItem::AppItem(
     QString name,
@@ -14,21 +13,7 @@ AppItem::AppItem(
       m_name(name),
       m_path(path),
       m_icon(icon)
-
 {
-    const QImage image(QUrl(icon).toLocalFile());
-    if (!image.isNull() && image.hasAlphaChannel()) {
-        const QImage rgba = image.convertToFormat(QImage::Format_RGBA8888);
-        qsizetype transparentPixels = 0;
-        const qsizetype pixelCount = qsizetype(rgba.width()) * rgba.height();
-        for (int y = 0; y < rgba.height(); ++y) {
-            const auto *line = reinterpret_cast<const QRgb *>(rgba.constScanLine(y));
-            for (int x = 0; x < rgba.width(); ++x)
-                transparentPixels += qAlpha(line[x]) < 245;
-        }
-        m_iconHasTransparency = pixelCount > 0
-                && transparentPixels * 100 >= pixelCount * 8;
-    }
 }
 
 QString AppItem::name() const
@@ -84,9 +69,4 @@ void AppItem::open()
     QDesktopServices::openUrl(
         QUrl::fromLocalFile(
             m_path));
-}
-
-bool AppItem::iconHasTransparency() const
-{
-    return m_iconHasTransparency;
 }

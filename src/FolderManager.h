@@ -20,6 +20,7 @@ public:
     enum Roles { FolderRole = Qt::UserRole + 1 };
     explicit FolderManager(
         QObject *parent = nullptr);
+    ~FolderManager() override;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -74,6 +75,9 @@ private:
     void loadDefaults();
     bool saveDefaults();
     void applyDefaultsToFolder(class FolderData *folder) const;
+    void trackFolder(class FolderData *folder);
+    void syncDefaultMembers();
+    void cleanupUnusedCovers() const;
 
     QList<class FolderData *> m_folders;
     int m_defaultGridColumns = 3;
@@ -84,6 +88,9 @@ private:
     bool m_defaultOverflowMode = false;
     bool m_defaultFrostedGlass = false;
     class FolderData *m_defaultFolder = nullptr;
+    bool m_dirty = false;
+    bool m_defaultsDirty = false;
+    class QTimer *m_defaultsSaveTimer = nullptr;
 };
 
 #endif

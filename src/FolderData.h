@@ -113,6 +113,8 @@ public:
     void setOverflowMode(bool value);
     void setExpansionDirection(const QString &value);
     void setOverflowCover(const QString &value);
+    void beginRestore();
+    void endRestore();
 
     Q_INVOKABLE
     void setWindowPosition(
@@ -182,6 +184,7 @@ private:
     QString m_overflowCover;
 
     FileManager *m_fileManager;
+    bool m_restoring = false;
 };
 
 #endif

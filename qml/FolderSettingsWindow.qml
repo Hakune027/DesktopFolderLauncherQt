@@ -214,7 +214,9 @@ Window {
                 visible: sectionTitle !== ""
                 spacing: 8
                 Rectangle {
-                    width: 6; height: 6; radius: 3
+                    Layout.preferredWidth: 6
+                    Layout.preferredHeight: 6
+                    radius: 3
                     color: "#8D9AFF"
                     Layout.alignment: Qt.AlignVCenter
                 }
@@ -474,7 +476,9 @@ Window {
                 spacing: 10
 
                 Rectangle {
-                    width: 32; height: 32; radius: 8
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 8
                     color: "#32ffffff"
                     FluentIcon { anchors.centerIn: parent; name: "folder"; width: 21; height: 21 }
                 }
@@ -491,7 +495,9 @@ Window {
 
                 // Close button
                 Rectangle {
-                    width: 28; height: 28; radius: 6
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: 6
                     color: closeHover.hovered ? "#25ff6b6b" : "transparent"
                     Behavior on color { ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
@@ -511,7 +517,7 @@ Window {
         // ── Divider ────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            height: 1
+            Layout.preferredHeight: 1
             color: "#14ffffff"
         }
 
@@ -577,7 +583,12 @@ Window {
                                 anchors.leftMargin: 14
                                 spacing: 10
 
-                                FluentIcon { name: modelData.icon; width: 18; height: 18; opacity: isActive ? 1 : 0.72 }
+                                FluentIcon {
+                                    name: modelData.icon
+                                    Layout.preferredWidth: 18
+                                    Layout.preferredHeight: 18
+                                    opacity: isActive ? 1 : 0.72
+                                }
                                 Label {
                                     text: modelData.label
                                     color: isActive ? "#f0f0f5" : "#a0a1ac"
@@ -727,6 +738,7 @@ Window {
                                 SettingRow {
                                     title: "边框样式"
                                     StyledComboBox {
+                                        id: borderStyleCombo
                                         Layout.fillWidth: true
                                         enabled: !root.folderData || !root.folderData.frostedGlass
                                         model: ["无边框", "轻描边", "实线", "强调色", "双层边框"]
@@ -746,16 +758,16 @@ Window {
                                             leftPadding: 12
                                             rightPadding: 30
                                             verticalAlignment: Text.AlignVCenter
-                                            text: parent.displayText
-                                            color: parent.enabled ? "#f5f5f5" : "#50f5f5f5"
+                                            text: borderStyleCombo.displayText
+                                            color: borderStyleCombo.enabled ? "#f5f5f5" : "#50f5f5f5"
                                             font.pixelSize: 13
                                         }
 
                                         indicator: Label {
-                                            x: parent.width - width - 10
-                                            y: parent.topPadding + (parent.availableHeight - height) / 2
+                                            x: borderStyleCombo.width - width - 10
+                                            y: borderStyleCombo.topPadding + (borderStyleCombo.availableHeight - height) / 2
                                             text: "▾"
-                                            color: parent.enabled ? "#b7b8c0" : "#40b7b8c0"
+                                            color: borderStyleCombo.enabled ? "#b7b8c0" : "#40b7b8c0"
                                             font.pixelSize: 10
                                         }
                                     }
@@ -827,7 +839,7 @@ Window {
 
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    height: 1
+                                    Layout.preferredHeight: 1
                                     color: "#12ffffff"
                                 }
 

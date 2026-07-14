@@ -220,7 +220,9 @@ Window {
             spacing: 10
 
             Rectangle {
-                width: 32; height: 32; radius: 8
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                radius: 8
                 color: "#32ffffff"
                 FluentIcon { anchors.centerIn: parent; name: "app"; width: 23; height: 23 }
             }
@@ -235,7 +237,9 @@ Window {
             }
 
             Rectangle {
-                width: 28; height: 28; radius: 6
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 6
                 color: mainCloseHover.hovered ? "#25ff6b6b" : "transparent"
                 Behavior on color { ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
                 HoverHandler { id: mainCloseHover }
@@ -284,6 +288,7 @@ Window {
                     { icon: "info", label: "应用与关于", page: 1 }
                 ]
                 delegate: Rectangle {
+                    id: navDelegate
                     required property var modelData
                     readonly property bool active: root.settingsPage === modelData.page
                     Layout.fillWidth: true
@@ -302,12 +307,17 @@ Window {
                         anchors.fill: parent
                         anchors.leftMargin: 14
                         spacing: 10
-                        FluentIcon { name: modelData.icon; width: 18; height: 18; opacity: parent.parent.active ? 1 : 0.7 }
+                        FluentIcon {
+                            name: modelData.icon
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
+                            opacity: navDelegate.active ? 1 : 0.7
+                        }
                         Label {
                             text: modelData.label
-                            color: parent.parent.active ? "#f0f0f5" : "#a0a1ac"
+                            color: navDelegate.active ? "#f0f0f5" : "#a0a1ac"
                             font.pixelSize: 13
-                            font.weight: parent.parent.active ? Font.DemiBold : Font.Normal
+                            font.weight: navDelegate.active ? Font.DemiBold : Font.Normal
                         }
                     }
                     HoverHandler { id: totalNavHover }
@@ -343,7 +353,9 @@ Window {
             spacing: 13
 
             Rectangle {
-                width: 38; height: 38; radius: 9
+                Layout.preferredWidth: 38
+                Layout.preferredHeight: 38
+                radius: 9
                 color: "#1a7b83ff"
                 FluentIcon { anchors.centerIn: parent; name: "app"; width: 26; height: 26 }
             }
@@ -413,7 +425,7 @@ Window {
         // ── Divider ──────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            height: 1
+            Layout.preferredHeight: 1
             color: "#18ffffff"
         }
 
@@ -429,7 +441,7 @@ Window {
             }
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: "#0cffffff"
             }
             Label {
@@ -492,7 +504,9 @@ Window {
 
                     // Folder icon with deterministic color
                     Rectangle {
-                        width: 40; height: 40; radius: 9
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        radius: 9
                         property var clr: root.colorForName(model.folderData.name)
                         color: clr.bg
                         FluentIcon { anchors.centerIn: parent; name: "folder"; width: 24; height: 24 }
@@ -604,7 +618,9 @@ Window {
 
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: 64; height: 64; radius: 16
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
+                        radius: 16
                         color: "#18ffffff"
                         Label {
                             anchors.centerIn: parent
@@ -783,7 +799,7 @@ Window {
                     Item { Layout.fillWidth: true }
                 }
 
-                Rectangle { Layout.fillWidth: true; height: 1; color: "#12ffffff" }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#12ffffff" }
                 Label {
                     text: "图标与留白"
                     color: "#e7e7ea"
@@ -828,7 +844,7 @@ Window {
                     Label { text: Math.round(defaultEdgeSlider.value) + " px"; color: "#b7b8c0"; Layout.preferredWidth: 54 }
                 }
 
-                Rectangle { Layout.fillWidth: true; height: 1; color: "#12ffffff" }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#12ffffff" }
                 Label {
                     text: "初始行为与材质"
                     color: "#e7e7ea"

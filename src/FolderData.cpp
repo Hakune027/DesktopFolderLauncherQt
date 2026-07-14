@@ -85,7 +85,22 @@ void FolderData::updateGridLayout()
     const int effectiveSpacing = m_showIconNames ? m_iconSpacing : qMax(4, m_iconSpacing - 20);
     m_fileManager->setGridLayout(m_iconSize + effectiveSpacing,
                                  m_iconSize + effectiveSpacing,
-                                 m_gridColumns, m_gridRows);
+                                 m_gridColumns, m_gridRows, !m_restoring);
+}
+
+void FolderData::beginRestore()
+{
+    m_restoring = true;
+}
+
+void FolderData::endRestore()
+{
+    m_restoring = false;
+    const int effectiveSpacing = m_showIconNames ? m_iconSpacing : qMax(4, m_iconSpacing - 20);
+    m_fileManager->restoreLayoutSettings(m_iconSize + effectiveSpacing,
+                                         m_iconSize + effectiveSpacing,
+                                         m_gridColumns, m_gridRows,
+                                         m_allowIconGaps, m_overflowMode);
 }
 bool FolderData::showFolderName() const { return m_showFolderName; }
 bool FolderData::showIconNames() const { return m_showIconNames; }
@@ -233,7 +248,8 @@ void FolderData::setAllowIconGaps(bool value)
     if (m_allowIconGaps == value)
         return;
     m_allowIconGaps = value;
-    m_fileManager->setAllowGaps(value);
+    if (!m_restoring)
+        m_fileManager->setAllowGaps(value);
     emit appearanceChanged();
 }
 
@@ -270,7 +286,8 @@ void FolderData::setOverflowMode(bool value)
     if (m_overflowMode == value)
         return;
     m_overflowMode = value;
-    m_fileManager->setAllowOverflow(value);
+    if (!m_restoring)
+        m_fileManager->setAllowOverflow(value);
     if (!value) {
         const int requiredRows = qMax(1, (m_fileManager->rowCount() + m_gridColumns - 1)
                                       / m_gridColumns);
@@ -313,12 +330,6 @@ void FolderData::setWindowPosition(
 
     m_windowX = x;
     m_windowY = y;
-    qDebug()
-        << "[FolderData] setWindowPosition"
-        << m_name
-        << m_folderId
-        << x << y;
-
     emit windowPositionChanged();
 }
 

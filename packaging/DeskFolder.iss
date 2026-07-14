@@ -22,7 +22,6 @@ DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#MyOutputDir}
 OutputBaseFilename={#MyOutputName}
 SetupIconFile=..\assets\app.ico

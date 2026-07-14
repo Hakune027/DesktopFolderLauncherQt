@@ -8,6 +8,10 @@
 #include <QStyle>
 #include <QQuickStyle>
 #include <QFont>
+#include <QLockFile>
+#include <QStandardPaths>
+#include <QDir>
+#include <QMessageBox>
 #include "src/FolderManager.h"
 #include "src/DropHandler.h"
 #include "src/WindowEffects.h"
@@ -19,12 +23,24 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
 
     QApplication app(argc, argv);
+    QCoreApplication::setApplicationName(QStringLiteral("DesktopFolderLauncher"));
 #ifdef DESK_FOLDER_VERSION
     app.setApplicationVersion(QStringLiteral(DESK_FOLDER_VERSION));
 #endif
     app.setWindowIcon(QIcon(QStringLiteral(":/qt/qml/DesktopFolderLauncher/assets/icons/app.svg")));
     app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 10));
     app.setQuitOnLastWindowClosed(false);
+
+    const QString dataDirectory = QStandardPaths::writableLocation(
+        QStandardPaths::AppLocalDataLocation);
+    QDir().mkpath(dataDirectory);
+    QLockFile instanceLock(QDir(dataDirectory).filePath(QStringLiteral("instance.lock")));
+    instanceLock.setStaleLockTime(10000);
+    if (!instanceLock.tryLock()) {
+        QMessageBox::information(nullptr, QStringLiteral("DeskFolder"),
+                                 QStringLiteral("DeskFolder 已在运行。请从系统托盘打开设置。"));
+        return 0;
+    }
 
     QQuickWindow::setDefaultAlphaBuffer(true);
 

@@ -164,13 +164,10 @@ Window {
     function clampToAvailableScreen() {
         if (!root.screen)
             return;
-        let area = root.screen.availableGeometry;
-        let areaX = area && area.x !== undefined ? area.x : (root.screen.virtualX || 0);
-        let areaY = area && area.y !== undefined ? area.y : (root.screen.virtualY || 0);
-        let areaWidth = area && area.width !== undefined
-                ? area.width : (root.screen.desktopAvailableWidth || root.screen.width || root.width);
-        let areaHeight = area && area.height !== undefined
-                ? area.height : (root.screen.desktopAvailableHeight || root.screen.height || root.height);
+        let areaX = root.screen.virtualX || 0;
+        let areaY = root.screen.virtualY || 0;
+        let areaWidth = root.screen.desktopAvailableWidth || root.screen.width || root.width;
+        let areaHeight = root.screen.desktopAvailableHeight || root.screen.height || root.height;
         root.x = Math.max(areaX, Math.min(root.x,
                                          areaX + Math.max(0, areaWidth - root.width)));
         root.y = Math.max(areaY, Math.min(root.y,
@@ -546,10 +543,12 @@ Window {
                     Item {
                         required property int index
                         visible: !root.folderData || root.folderData.overflowCover === ""
-                        readonly property var overflowItem: root.folderData
-                                                            ? (root.overflowPreviewRevision,
-                                                               root.folderData.items.itemAt(root.compactVisibleCount + index))
-                                                            : null
+                        readonly property var overflowItem: {
+                            root.overflowPreviewRevision;
+                            return root.folderData
+                                    ? root.folderData.items.itemAt(root.compactVisibleCount + index)
+                                    : null;
+                        }
                         width: overflowCluster.width * 0.31
                         height: width
                         x: overflowCluster.width * (index % 2 === 0 ? 0.16 : 0.53)
@@ -602,22 +601,10 @@ Window {
 
         onPressed: function (mouse) {
             root.startSystemMove();
-
-            console.log(
-                "[FolderWindow] 开始拖动:",
-                root.folderName,
-                "window=(" + root.x + "," + root.y + ")"
-            );
         }
 
         onReleased: function (mouse) {
             // 松手时立即写盘, 防止 onClosing 未触发导致位置丢失
-            console.log(
-                "[FolderWindow] 拖动结束, 保存位置:",
-                root.folderName,
-                "(" + root.x + "," + root.y + ")"
-            );
-
             if (root.folderData) {
                 root.folderData.setWindowPosition(root.x, root.y);
             }
@@ -638,15 +625,6 @@ Window {
             root.width = root.targetWindowWidth;
             root.height = root.targetWindowHeight;
             root.geometryReady = true;
-            console.log(
-                "[FolderWindow] Timer触发:",
-                root.folderName,
-                "saved=(" +
-                    (root.folderData ? root.folderData.windowX : "?") + "," +
-                    (root.folderData ? root.folderData.windowY : "?") + ")",
-                "current=(" + root.x + "," + root.y + ")"
-            );
-
             if (root.folderData &&
                 root.folderData.windowX >= 0 &&
                 root.folderData.windowY >= 0)
@@ -654,16 +632,6 @@ Window {
                 root.x = root.folderData.windowX;
                 root.y = root.folderData.windowY;
 
-                console.log(
-                    "[FolderWindow] 已恢复位置:",
-                    root.folderName,
-                    "(" + root.x + "," + root.y + ")"
-                );
-            } else {
-                console.log(
-                    "[FolderWindow] 无保存位置, 使用默认:",
-                    root.folderName
-                );
             }
 
             // 最终显示窗口(位置已确定, 不会闪烁)
@@ -685,24 +653,11 @@ Window {
     }
 
     Component.onCompleted: {
-        console.log(
-            "[FolderWindow] Component.onCompleted:",
-            root.folderName,
-            "saved=(" +
-                (root.folderData ? root.folderData.windowX : "?") + "," +
-                (root.folderData ? root.folderData.windowY : "?") + ")"
-        );
         restoreTimer.start();
     }
 
     // ====== 关闭时持久化窗口位置 ======
     onClosing: function () {
-        console.log(
-            "[FolderWindow] onClosing:",
-            root.folderName,
-            "position=(" + root.x + "," + root.y + ")"
-        );
-
         if (root.folderData) {
             root.folderData.setWindowPosition(root.x, root.y);
         }

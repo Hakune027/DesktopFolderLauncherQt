@@ -85,31 +85,10 @@ Item {
                     }
                 });
 
-                console.log(
-                    "[FolderSpawner] 创建窗口:",
-                    data.name,
-                    "index=" + i,
-                    "savedPos=(" + data.windowX + "," + data.windowY + ")"
-                );
-
                 windowMap[key] = folder;
 
                 // 窗口关闭时清理
                 folder.closing.connect(function () {
-                    console.log(
-                        "[FolderSpawner] 窗口关闭:",
-                        data.name,
-                        "position=(" + folder.x + "," + folder.y + ")"
-                    );
-
-                    // 持久化窗口位置 & 文件夹元数据
-                    if (data) {
-                        data.setWindowPosition(folder.x, folder.y);
-                    }
-                    if (typeof folderManager !== 'undefined') {
-                        folderManager.save();
-                    }
-
                     if (windowMap[key] === folder)
                         delete windowMap[key];
                     Qt.callLater(function() { folder.destroy(); });

@@ -103,8 +103,8 @@ Item {
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
-            sourceSize.width: 256
-            sourceSize.height: 256
+            sourceSize.width: Math.min(192, Math.max(64, appIcon.iconSize * 2))
+            sourceSize.height: Math.min(192, Math.max(64, appIcon.iconSize * 2))
         }
 
         ShaderEffectSource {
