@@ -1,23 +1,17 @@
 #ifndef FILEMANAGER_H
 #define FILEMANAGER_H
 
-#include <QObject>
-#include <QQmlListProperty>
+#include <QAbstractListModel>
 
 #include "AppItem.h"
 
-class FileManager : public QObject
+class FileManager : public QAbstractListModel
 {
 
     Q_OBJECT
 
-    Q_PROPERTY(
-        QQmlListProperty<QObject>
-            items
-                READ items
-                    NOTIFY itemsChanged)
-
 public:
+    enum Roles { ItemRole = Qt::UserRole + 1 };
     explicit FileManager(
         QObject *parent = nullptr);
 
@@ -25,8 +19,9 @@ public:
         const QString &folderId,
         const QString &folderName);
 
-    QQmlListProperty<QObject>
-    items();
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
 
     Q_INVOKABLE
     void addFile(
@@ -36,6 +31,8 @@ public:
     void moveItem(
         int from,
         int to);
+
+    Q_INVOKABLE void moveItemToPosition(int index, int x, int y);
 
     Q_INVOKABLE
     void removeFile(
@@ -49,7 +46,7 @@ public:
     void load();
 
     Q_INVOKABLE
-    void save();
+    bool save();
 
 signals:
 
@@ -60,7 +57,7 @@ private:
 
     QString legacyDataPath();
 
-    QList<QObject *> m_items;
+    QList<AppItem *> m_items;
 
     QString m_folderId;
 

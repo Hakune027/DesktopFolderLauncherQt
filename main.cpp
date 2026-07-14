@@ -1,30 +1,27 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QAction>
+#include <QStyle>
 #include "src/FolderManager.h"
-#include "src/SettingsManager.h"
 #include "src/DropHandler.h"
 
 int main(int argc, char *argv[])
 {
 
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
 
     QQuickWindow::setDefaultAlphaBuffer(true);
-
-    SettingsManager settings;
 
     FolderManager folderManager;
 
     DropHandler *dropHandler = new DropHandler(&app);
 
     QQmlApplicationEngine engine;
-
-    engine.rootContext()
-        ->setContextProperty(
-            "settings",
-            &settings);
 
     engine.rootContext()
         ->setContextProperty(
@@ -45,10 +42,41 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // Register native OLE drag-and-drop on the main window (settings window)
-    QQuickWindow *window =
-        qobject_cast<QQuickWindow *>(
-            engine.rootObjects().first());
+    QWindow *settingsWindow = engine.rootObjects().first()->findChild<QWindow *>("settingsWindow");
+
+    QSystemTrayIcon trayIcon;
+    QMenu trayMenu;
+    QAction showSettingsAction(QStringLiteral("打开设置"), &trayMenu);
+    QAction quitAction(QStringLiteral("退出"), &trayMenu);
+    trayMenu.addAction(&showSettingsAction);
+    trayMenu.addSeparator();
+    trayMenu.addAction(&quitAction);
+
+    QIcon trayImage = app.windowIcon();
+    if (trayImage.isNull())
+        trayImage = app.style()->standardIcon(QStyle::SP_DirIcon);
+    trayIcon.setIcon(trayImage);
+    trayIcon.setToolTip(QStringLiteral("DesktopFolderLauncher"));
+    trayIcon.setContextMenu(&trayMenu);
+
+    const auto showSettings = [settingsWindow]() {
+        if (!settingsWindow)
+            return;
+        settingsWindow->show();
+        settingsWindow->raise();
+        settingsWindow->requestActivate();
+    };
+    QObject::connect(&showSettingsAction, &QAction::triggered, &app, showSettings);
+    QObject::connect(&quitAction, &QAction::triggered, &app, &QApplication::quit);
+    QObject::connect(&trayIcon, &QSystemTrayIcon::activated, &app,
+                     [showSettings](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
+            showSettings();
+    });
+    trayIcon.show();
+
+    // Register native OLE drag-and-drop on the settings window.
+    QQuickWindow *window = qobject_cast<QQuickWindow *>(settingsWindow);
 
     if (window)
     {

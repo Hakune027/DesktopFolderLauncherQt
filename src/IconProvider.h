@@ -8,7 +8,7 @@ class IconProvider
 
 public:
     static QString getIcon(
-        QString filePath);
+        const QString &filePath);
 };
 
 #endif

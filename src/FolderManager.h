@@ -1,26 +1,21 @@
 #ifndef FOLDERMANAGER_H
 #define FOLDERMANAGER_H
 
-#include <QObject>
-#include <QQmlListProperty>
+#include <QAbstractListModel>
 
-class FolderManager : public QObject
+class FolderManager : public QAbstractListModel
 {
 
     Q_OBJECT
 
-    Q_PROPERTY(
-        QQmlListProperty<QObject>
-            folders
-                READ folders
-                    NOTIFY foldersChanged)
-
 public:
+    enum Roles { FolderRole = Qt::UserRole + 1 };
     explicit FolderManager(
         QObject *parent = nullptr);
 
-    QQmlListProperty<QObject>
-    folders();
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
 
     Q_INVOKABLE
     void createFolder(
@@ -41,7 +36,7 @@ public:
     void load();
 
     Q_INVOKABLE
-    void save();
+    bool save();
 
 signals:
 
@@ -50,7 +45,7 @@ signals:
 private:
     QString configPath();
 
-    QList<QObject *> m_folders;
+    QList<class FolderData *> m_folders;
 };
 
 #endif

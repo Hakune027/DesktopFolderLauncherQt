@@ -1,7 +1,5 @@
 #include "FileManager.h"
 
-#include <QQmlListProperty>
-
 #include <QFileInfo>
 #include <QUrl>
 #include <QDesktopServices>
@@ -14,20 +12,27 @@
 #include <QPoint>
 
 #include <QStandardPaths>
+#include <QSaveFile>
+#include <QJsonParseError>
+#include <QLoggingCategory>
 
 #include "IconProvider.h"
 
 FileManager::FileManager(QObject *parent)
-    : QObject(parent)
+    : QAbstractListModel(parent)
 {
 }
 
-QQmlListProperty<QObject> FileManager::items()
+int FileManager::rowCount(const QModelIndex &parent) const { return parent.isValid() ? 0 : m_items.size(); }
+
+QVariant FileManager::data(const QModelIndex &index, int role) const
 {
-    return QQmlListProperty<QObject>(
-        this,
-        &m_items);
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_items.size() || role != ItemRole)
+        return {};
+    return QVariant::fromValue(static_cast<QObject *>(m_items.at(index.row())));
 }
+
+QHash<int, QByteArray> FileManager::roleNames() const { return {{ItemRole, "item"}}; }
 
 void FileManager::setFolderInfo(
     const QString &folderId,
@@ -86,6 +91,7 @@ void FileManager::addFile(QString path)
                 .toLocalFile();
     }
 
+    path = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     QFileInfo info(path);
 
     if (!info.exists())
@@ -95,14 +101,10 @@ void FileManager::addFile(QString path)
 
     // 防止重复添加
 
-    for (QObject *obj : m_items)
+    for (AppItem *item : m_items)
     {
-
-        AppItem *item =
-            qobject_cast<AppItem *>(obj);
-
         if (item &&
-            item->path() == path)
+            QString::compare(QDir::cleanPath(item->path()), path, Qt::CaseInsensitive) == 0)
         {
             return;
         }
@@ -122,9 +124,7 @@ void FileManager::addFile(QString path)
             int gx = col * gridSize;
             int gy = row * gridSize;
             bool occupied = false;
-            for (QObject *obj : m_items) {
-                AppItem *existing =
-                    qobject_cast<AppItem *>(obj);
+            for (AppItem *existing : m_items) {
                 if (existing &&
                     existing->x() == gx &&
                     existing->y() == gy) {
@@ -150,24 +150,22 @@ void FileManager::addFile(QString path)
     item->setX(newX);
     item->setY(newY);
 
+    beginInsertRows({}, m_items.size(), m_items.size());
     m_items.append(item);
+    endInsertRows();
 
     save();
 
     emit itemsChanged();
 }
 
-void FileManager::save()
+bool FileManager::save()
 {
 
     QJsonArray array;
 
-    for (QObject *obj : m_items)
+    for (AppItem *item : m_items)
     {
-
-        AppItem *item =
-            qobject_cast<AppItem *>(obj);
-
         if (!item)
             continue;
 
@@ -193,20 +191,29 @@ void FileManager::save()
 
     QJsonDocument doc(array);
 
-    QFile file(dataPath());
+    QSaveFile file(dataPath());
 
     if (file.open(QIODevice::WriteOnly))
     {
 
-        file.write(
-            doc.toJson());
-
-        file.close();
+        if (file.write(doc.toJson()) < 0 || !file.commit()) {
+            qWarning() << "Failed to save folder data:" << file.errorString();
+            return false;
+        }
+        return true;
     }
+    qWarning() << "Failed to open folder data for writing:" << file.errorString();
+    return false;
 }
 
 void FileManager::load()
 {
+    if (!m_items.isEmpty()) {
+        beginResetModel();
+        qDeleteAll(m_items);
+        m_items.clear();
+        endResetModel();
+    }
 
     QString path = dataPath();
 
@@ -251,8 +258,13 @@ void FileManager::load()
 
     file.close();
 
-    QJsonDocument doc =
-        QJsonDocument::fromJson(data);
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError || !doc.isArray()) {
+        qWarning() << "Invalid folder data, preserving file:" << path << error.errorString();
+        QFile::copy(path, path + ".corrupt");
+        return;
+    }
 
     QJsonArray array =
         doc.array();
@@ -262,6 +274,7 @@ void FileManager::load()
     const int gridSize = 100;
     const int maxCols = 3;
 
+    beginResetModel();
     for (auto value : array)
     {
 
@@ -314,6 +327,7 @@ void FileManager::load()
         m_items.append(item);
     }
 
+    endResetModel();
     emit itemsChanged();
 
     // 如果加载时有位置冲突被修正，持久化保存
@@ -329,8 +343,9 @@ void FileManager::removeFile(int index)
         return;
     }
 
-    QObject *obj =
-        m_items.takeAt(index);
+    beginRemoveRows({}, index, index);
+    AppItem *obj = m_items.takeAt(index);
+    endRemoveRows();
 
     obj->deleteLater();
 
@@ -371,14 +386,35 @@ void FileManager::moveItem(
     if (from == to)
         return;
 
-    QObject *item =
-        m_items.takeAt(from);
-
-    m_items.insert(
-        to,
-        item);
+    const int destination = to > from ? to + 1 : to;
+    beginMoveRows({}, from, from, {}, destination);
+    m_items.move(from, to);
+    endMoveRows();
 
     save();
 
     emit itemsChanged();
+}
+
+void FileManager::moveItemToPosition(int index, int x, int y)
+{
+    if (index < 0 || index >= m_items.size())
+        return;
+    AppItem *dragged = m_items.at(index);
+    AppItem *target = nullptr;
+    for (int i = 0; i < m_items.size(); ++i) {
+        if (i != index && m_items.at(i)->x() == x && m_items.at(i)->y() == y) {
+            target = m_items.at(i);
+            break;
+        }
+    }
+    const int oldX = dragged->x();
+    const int oldY = dragged->y();
+    dragged->setX(x);
+    dragged->setY(y);
+    if (target) {
+        target->setX(oldX);
+        target->setY(oldY);
+    }
+    save();
 }

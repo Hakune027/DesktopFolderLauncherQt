@@ -2,7 +2,6 @@
 #define FOLDERDATA_H
 
 #include <QObject>
-#include <QQmlListProperty>
 
 #include "FileManager.h"
 
@@ -21,10 +20,7 @@ class FolderData : public QObject
             READ folderId
                 CONSTANT)
 
-    Q_PROPERTY(
-        QQmlListProperty<QObject> items
-            READ items
-                NOTIFY itemsChanged)
+    Q_PROPERTY(FileManager *items READ items CONSTANT)
 
     Q_PROPERTY(
         int windowX
@@ -62,7 +58,7 @@ public:
         int x,
         int y);
 
-    QQmlListProperty<QObject> items();
+    FileManager *items() const;
 
     Q_INVOKABLE
     void addFile(
@@ -72,12 +68,14 @@ public:
     void removeFile(
         int index);
 
+    Q_INVOKABLE void moveItemToPosition(int index, int x, int y);
+
     Q_INVOKABLE
     void openLocation(
         QString path);
 
     Q_INVOKABLE
-    void save();
+    bool save();
 
 signals:
 
@@ -93,8 +91,6 @@ private:
     int m_windowX = -1;
 
     int m_windowY = -1;
-
-    bool m_hasWindowPosition = false;
 
     FileManager *m_fileManager;
 };

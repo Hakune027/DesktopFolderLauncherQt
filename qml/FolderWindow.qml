@@ -8,6 +8,7 @@ Window {
     property var folderData
 
     property string folderName: folderData ? folderData.name : "开发工具"
+    property bool nativeDropRegistered: false
 
     width: 350
 
@@ -20,25 +21,38 @@ Window {
 
     color: "transparent"
 
+    function clampToAvailableScreen() {
+        if (!root.screen)
+            return;
+        let area = root.screen.availableGeometry;
+        root.x = Math.max(area.x, Math.min(root.x,
+                                           area.x + Math.max(0, area.width - root.width)));
+        root.y = Math.max(area.y, Math.min(root.y,
+                                           area.y + Math.max(0, area.height - root.height)));
+    }
+
+    onScreenChanged: Qt.callLater(clampToAvailableScreen)
+
     // ====== 外部文件拖放接收层(最底层, Qt 内部 OLE 翻译) ======
     DropArea {
         id: fileDropArea
 
         anchors.fill: parent
-
-        keys: ["text/uri-list"]
+        z: 1000
 
         onEntered: function (drag) {
-            drag.accept();
+            if (drag.hasUrls)
+                drag.acceptProposedAction();
         }
 
         onDropped: function (drop) {
-            if (!root.folderData)
+            if (!root.folderData || !drop.hasUrls)
                 return;
 
             for (let i = 0; i < drop.urls.length; i++) {
                 root.folderData.addFile(drop.urls[i]);
             }
+            drop.acceptProposedAction();
         }
     }
 
@@ -77,17 +91,17 @@ Window {
             anchors.topMargin: 70
 
             Repeater {
-                model: folderData ? folderData.items : []
+                model: folderData ? folderData.items : null
 
                 delegate: AppIcon {
-                    item: modelData
+                    item: model.item
 
                     itemIndex: index
 
                     // 单击 / 右键菜单 → 打开文件
                     onOpenRequest: {
-                        if (modelData) {
-                            modelData.open();
+                        if (item) {
+                            item.open();
                         }
                     }
 
@@ -103,49 +117,7 @@ Window {
 
                     // 拖拽排序: 交换位置或移动到空位
                     onRequestMove: function (index, x, y) {
-                        let items = folderData.items;
-
-                        let draggedItem = items[index];
-
-                        if (draggedItem.x === x && draggedItem.y === y) {
-                            return;
-                        }
-
-                        // 检查目标位置是否被占用
-                        let targetIndex = -1;
-
-                        for (let i = 0; i < items.length; i++) {
-                            if (i === index)
-                                continue;
-
-                            let other = items[i];
-
-                            if (other.x === x && other.y === y) {
-                                targetIndex = i;
-                                break;
-                            }
-                        }
-
-                        if (targetIndex >= 0) {
-                            // 交换位置
-                            let targetItem = items[targetIndex];
-
-                            let oldX = draggedItem.x;
-                            let oldY = draggedItem.y;
-
-                            draggedItem.x = targetItem.x;
-                            draggedItem.y = targetItem.y;
-
-                            targetItem.x = oldX;
-                            targetItem.y = oldY;
-                        } else {
-                            // 移到空位
-                            draggedItem.x = x;
-                            draggedItem.y = y;
-                        }
-
-                        // 保存当前文件夹
-                        folderData.save();
+                        folderData.moveItemToPosition(index, x, y);
                     }
                 }
             }
@@ -155,36 +127,20 @@ Window {
     // ====== 窗口拖动条(顶部) ======
     MouseArea {
         id: dragArea
+        z: 1001
 
         width: parent.width
 
         height: 40
 
-        property real startX
-
-        property real startY
-
         onPressed: function (mouse) {
-            startX = mouse.x;
-            startY = mouse.y;
+            root.startSystemMove();
 
             console.log(
                 "[FolderWindow] 开始拖动:",
                 root.folderName,
                 "window=(" + root.x + "," + root.y + ")"
             );
-        }
-
-        onPositionChanged: function (mouse) {
-            if (mouse.buttons & Qt.LeftButton) {
-                root.x += mouse.x - startX;
-                root.y += mouse.y - startY;
-
-                // 实时同步位置到内存(不写盘, 关闭时才持久化)
-                if (root.folderData) {
-                    root.folderData.setWindowPosition(root.x, root.y);
-                }
-            }
         }
 
         onReleased: function (mouse) {
@@ -242,6 +198,13 @@ Window {
 
             // 最终显示窗口(位置已确定, 不会闪烁)
             root.visible = true;
+            Qt.callLater(root.clampToAvailableScreen);
+            Qt.callLater(function() {
+                if (!root.nativeDropRegistered && root.folderData) {
+                    dropHandler.registerWindowTarget(root, root.folderData, "addFile");
+                    root.nativeDropRegistered = true;
+                }
+            });
         }
     }
 
@@ -269,6 +232,10 @@ Window {
         }
         if (typeof folderManager !== 'undefined') {
             folderManager.save();
+        }
+        if (root.nativeDropRegistered) {
+            dropHandler.unregisterWindowTarget(root);
+            root.nativeDropRegistered = false;
         }
     }
 }

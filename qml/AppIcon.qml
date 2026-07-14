@@ -83,12 +83,16 @@ Item {
         id: dragArea
         anchors.fill: parent
         drag.target: appIcon
+        drag.minimumX: 0
+        drag.minimumY: 0
+        drag.maximumX: Math.max(0, appIcon.parent.width - appIcon.width)
+        drag.maximumY: Math.max(0, appIcon.parent.height - appIcon.height)
 
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         // 区分点击与拖拽
-        property real pressX: 0
-        property real pressY: 0
+        property point pressScenePosition
+        property bool wasDragged: false
 
         onPressed: function (mouse) {
             // 右键按下 → 立即弹出菜单(标准右键行为)
@@ -98,8 +102,15 @@ Item {
             }
 
             // 左键按下 → 记录起点用于拖拽判断
-            pressX = mouse.x;
-            pressY = mouse.y;
+            pressScenePosition = appIcon.mapToItem(null, mouse.x, mouse.y);
+            wasDragged = false;
+        }
+
+        onPositionChanged: function(mouse) {
+            let p = appIcon.mapToItem(null, mouse.x, mouse.y);
+            if (Math.abs(p.x - pressScenePosition.x) >= 5 ||
+                Math.abs(p.y - pressScenePosition.y) >= 5)
+                wasDragged = true;
         }
 
         onReleased: function (mouse) {
@@ -107,11 +118,7 @@ Item {
             if (mouse.button !== Qt.LeftButton)
                 return;
 
-            let dx = Math.abs(mouse.x - pressX);
-            let dy = Math.abs(mouse.y - pressY);
-
-            // 移动距离小于阈值视为点击
-            if (dx < 5 && dy < 5) {
+            if (!wasDragged) {
                 // 左键单击 → 打开文件
                 appIcon.openRequest();
                 return;
@@ -119,8 +126,10 @@ Item {
 
             // ---- 拖拽结束: 吸附网格 & 触发排序 ----
             let gridSize = 100;
-            let nx = Math.round(appIcon.x / gridSize) * gridSize;
-            let ny = Math.round(appIcon.y / gridSize) * gridSize;
+            let nx = Math.max(0, Math.min(Math.round(appIcon.x / gridSize) * gridSize,
+                                          appIcon.parent.width - appIcon.width));
+            let ny = Math.max(0, Math.min(Math.round(appIcon.y / gridSize) * gridSize,
+                                          appIcon.parent.height - appIcon.height));
 
             // 先更新 model
             appIcon.requestMove(appIcon.itemIndex, nx, ny);

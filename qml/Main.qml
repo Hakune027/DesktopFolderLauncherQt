@@ -8,7 +8,7 @@ Window {
 
     height: 1
 
-    visible: true
+    visible: false
 
     color: "transparent"
 

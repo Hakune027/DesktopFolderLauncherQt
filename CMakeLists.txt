@@ -21,16 +21,14 @@ find_package(Qt6 REQUIRED COMPONENTS
 
 
 qt_standard_project_setup()
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 
 
 qt_add_executable(
     DesktopFolderLauncher
 
     main.cpp
-
-
-    src/SettingsManager.cpp
-    src/SettingsManager.h
 
 
     src/AppItem.cpp
@@ -88,3 +86,28 @@ target_link_libraries(
     Qt6::Widgets
     Qt6::QuickControls2
 )
+
+install(TARGETS DesktopFolderLauncher
+    RUNTIME DESTINATION bin
+)
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(DesktopFolderLauncherTests
+        tests/model_tests.cpp
+        src/AppItem.cpp src/AppItem.h
+        src/FileManager.cpp src/FileManager.h
+        src/IconProvider.cpp src/IconProvider.h
+        src/FolderData.cpp src/FolderData.h
+        src/FolderManager.cpp src/FolderManager.h
+    )
+    target_include_directories(DesktopFolderLauncherTests PRIVATE src)
+    target_link_libraries(DesktopFolderLauncherTests PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Widgets Qt6::Test)
+    add_test(NAME model_tests COMMAND DesktopFolderLauncherTests)
+    set_tests_properties(model_tests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+endif()

@@ -79,8 +79,6 @@ void FolderData::setWindowPosition(
 
     m_windowX = x;
     m_windowY = y;
-    m_hasWindowPosition = true;
-
     qDebug()
         << "[FolderData] setWindowPosition"
         << m_name
@@ -90,12 +88,7 @@ void FolderData::setWindowPosition(
     emit windowPositionChanged();
 }
 
-QQmlListProperty<QObject>
-FolderData::items()
-{
-
-    return m_fileManager->items();
-}
+FileManager *FolderData::items() const { return m_fileManager; }
 
 void FolderData::addFile(QString path)
 {
@@ -109,13 +102,18 @@ void FolderData::removeFile(int index)
     m_fileManager->removeFile(index);
 }
 
+void FolderData::moveItemToPosition(int index, int x, int y)
+{
+    m_fileManager->moveItemToPosition(index, x, y);
+}
+
 void FolderData::openLocation(QString path)
 {
 
     m_fileManager->openLocation(path);
 }
 
-void FolderData::save()
+bool FolderData::save()
 {
-    m_fileManager->save();
+    return m_fileManager->save();
 }

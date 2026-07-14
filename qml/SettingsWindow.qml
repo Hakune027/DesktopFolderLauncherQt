@@ -3,40 +3,28 @@ import QtQuick.Controls
 
 Window {
     id: root
+    objectName: "settingsWindow"
+    transientParent: null
 
     width: 500
     height: 400
 
-    visible: true
+    visible: false
 
     title: "DesktopFolderLauncher 设置"
 
-    // 用 QML 原生列表替代 QQmlListProperty 绑定,
-    // 每次 foldersChanged 时重建列表以触发 Repeater 刷新
-    property var folderList: []
-
-    Connections {
-        target: folderManager
-        function onFoldersChanged() {
-            rebuildFolderList();
+    function syncVisibility() {
+        if (folderManager.folderCount() === 0) {
+            root.show();
+            root.raise();
+            root.requestActivate();
+        } else {
+            root.hide();
         }
     }
 
-    function rebuildFolderList() {
-        let list = [];
-        let count = folderManager.folderCount();
-        for (let i = 0; i < count; i++) {
-            let data = folderManager.folderAt(i);
-            if (data) {
-                list.push(data);
-            }
-        }
-        folderList = list;
-    }
+    Component.onCompleted: Qt.callLater(root.syncVisibility)
 
-    Component.onCompleted: {
-        rebuildFolderList();
-    }
 
     // 新建文件夹弹出对话框
     Dialog {
@@ -97,7 +85,7 @@ Window {
             width: 350
             height: 200
 
-            model: folderList
+            model: folderManager
 
             delegate: Rectangle {
                 width: 350
@@ -112,7 +100,7 @@ Window {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.name
+                    text: model.folderData.name
                         font.pixelSize: 16
                     }
                 }
@@ -144,7 +132,7 @@ Window {
 
         // 空状态提示
         Text {
-            visible: root.folderList.length === 0
+            visible: folderManager.folderCount() === 0
             text: "暂无文件夹, 点击上方按钮创建"
             color: "#888888"
             font.pixelSize: 14

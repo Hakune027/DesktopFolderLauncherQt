@@ -114,6 +114,7 @@ Item {
                     for (let d = 0; d < keysToDel.length; d++) {
                         delete windowMap[keysToDel[d]];
                     }
+                    Qt.callLater(function() { folder.destroy(); });
                 });
             }
         }

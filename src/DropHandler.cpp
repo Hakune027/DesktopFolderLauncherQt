@@ -128,10 +128,22 @@ void DropHandler::registerWindowTarget(
         }
         else if (hr == DRAGDROP_E_ALREADYREGISTERED)
         {
-            // Qt 内部已注册 IDropTarget, QML DropArea 会处理拖放
-            qDebug()
-                << "DropHandler: 窗口已有拖放目标, 使用 QML DropArea"
-                << hwnd;
+            // Dynamic folder windows need a deterministic native target. Replace
+            // Qt's target because external Explorer drops are not always routed
+            // to a QML DropArea on frameless transparent windows.
+            RevokeDragDrop(hwnd);
+            hr = RegisterDragDrop(hwnd, this);
+            if (SUCCEEDED(hr)) {
+                WindowEntry entry;
+                entry.hwnd = hwnd;
+                entry.target = target;
+                entry.method = method;
+                m_entries.append(entry);
+                qDebug() << "DropHandler: replaced existing window drop target" << hwnd;
+            } else {
+                qWarning() << "DropHandler: failed to replace window drop target"
+                           << Qt::hex << hr;
+            }
         }
         else
         {
@@ -334,10 +346,12 @@ HRESULT __stdcall DropHandler::Drop(
         for (const QString &file : files)
         {
 
-            QMetaObject::invokeMethod(
+            const bool invoked = QMetaObject::invokeMethod(
                 entry->target,
                 entry->method.toUtf8().constData(),
                 Q_ARG(QString, file));
+            if (!invoked)
+                qWarning() << "DropHandler: target method invocation failed" << entry->method;
         }
     }
     else

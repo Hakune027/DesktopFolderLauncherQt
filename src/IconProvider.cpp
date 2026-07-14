@@ -5,8 +5,9 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QUrl>
+#include <QCryptographicHash>
 
-QString IconProvider::getIcon(QString filePath)
+QString IconProvider::getIcon(const QString &filePath)
 {
 
     QFileInfo info(filePath);
@@ -27,11 +28,13 @@ QString IconProvider::getIcon(QString filePath)
         dir.mkpath(".");
     }
 
-    QString savePath =
-        cachePath + "/" + info.baseName() + ".png";
+    const QByteArray cacheKey = QCryptographicHash::hash(
+        info.canonicalFilePath().toUtf8() + QByteArray::number(info.lastModified().toMSecsSinceEpoch()),
+        QCryptographicHash::Sha256).toHex();
+    QString savePath = cachePath + "/" + QString::fromLatin1(cacheKey) + ".png";
 
-    icon.pixmap(128, 128)
-        .save(savePath);
+    if (!QFileInfo::exists(savePath) && !icon.pixmap(128, 128).save(savePath))
+        return QString();
 
     qDebug()
         << "Icon saved:"

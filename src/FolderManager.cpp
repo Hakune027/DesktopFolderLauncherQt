@@ -10,21 +10,27 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 #include <QUuid>
+#include <QSaveFile>
+#include <QJsonParseError>
+#include <QRegularExpression>
+#include <utility>
 
 FolderManager::FolderManager(QObject *parent)
-    : QObject(parent)
+    : QAbstractListModel(parent)
 {
     load();
 }
 
-QQmlListProperty<QObject>
-FolderManager::folders()
-{
+int FolderManager::rowCount(const QModelIndex &parent) const { return parent.isValid() ? 0 : m_folders.size(); }
 
-    return QQmlListProperty<QObject>(
-        this,
-        &m_folders);
+QVariant FolderManager::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_folders.size() || role != FolderRole)
+        return {};
+    return QVariant::fromValue(static_cast<QObject *>(m_folders.at(index.row())));
 }
+
+QHash<int, QByteArray> FolderManager::roleNames() const { return {{FolderRole, "folderData"}}; }
 
 QString FolderManager::configPath()
 {
@@ -43,15 +49,21 @@ void FolderManager::createFolder(
     QString name)
 {
 
-    if (name.isEmpty())
+    name = name.trimmed();
+    if (name.isEmpty() || name.size() > 80 || name.contains(QRegularExpression(QStringLiteral("[\\x00-\\x1f]"))))
         return;
+    for (const FolderData *folder : std::as_const(m_folders))
+        if (folder->name().compare(name, Qt::CaseInsensitive) == 0)
+            return;
 
     FolderData *folder =
         new FolderData(
             name,
             this);
 
+    beginInsertRows({}, m_folders.size(), m_folders.size());
     m_folders.append(folder);
+    endInsertRows();
 
     save();
 
@@ -70,9 +82,7 @@ void FolderManager::removeFolder(
     }
 
     // 删除该文件夹的数据文件(使用 folderId)
-    FolderData *folder =
-        qobject_cast<FolderData *>(
-            m_folders[index]);
+    FolderData *folder = m_folders[index];
 
     if (folder)
     {
@@ -101,8 +111,9 @@ void FolderManager::removeFolder(
         }
     }
 
-    QObject *obj =
-        m_folders.takeAt(index);
+    beginRemoveRows({}, index, index);
+    FolderData *obj = m_folders.takeAt(index);
+    endRemoveRows();
 
     obj->deleteLater();
 
@@ -151,8 +162,13 @@ void FolderManager::load()
 
     file.close();
 
-    QJsonDocument doc =
-        QJsonDocument::fromJson(data);
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError || !doc.isArray()) {
+        qWarning() << "Invalid folder configuration, preserving file:" << configPath() << error.errorString();
+        QFile::copy(configPath(), configPath() + ".corrupt");
+        return;
+    }
 
     QJsonArray array =
         doc.array();
@@ -160,6 +176,9 @@ void FolderManager::load()
     qDebug()
         << "[FolderManager] load >>>";
 
+    beginResetModel();
+    qDeleteAll(m_folders);
+    m_folders.clear();
     for (auto value : array)
     {
 
@@ -218,13 +237,14 @@ void FolderManager::load()
     qDebug()
         << "[FolderManager] load <<<";
 
+    endResetModel();
     emit foldersChanged();
 
     // 如果旧版配置缺少 id, 立即保存以固化 UUID
     save();
 }
 
-void FolderManager::save()
+bool FolderManager::save()
 {
 
     QJsonArray array;
@@ -232,12 +252,8 @@ void FolderManager::save()
     qDebug()
         << "[FolderManager] save >>>";
 
-    for (QObject *obj : m_folders)
+    for (FolderData *folder : m_folders)
     {
-
-        FolderData *folder =
-            qobject_cast<FolderData *>(obj);
-
         if (!folder)
             continue;
 
@@ -271,14 +287,17 @@ void FolderManager::save()
 
     QJsonDocument doc(array);
 
-    QFile file(configPath());
+    QSaveFile file(configPath());
 
     if (file.open(QIODevice::WriteOnly))
     {
 
-        file.write(
-            doc.toJson());
-
-        file.close();
+        if (file.write(doc.toJson()) < 0 || !file.commit()) {
+            qWarning() << "Failed to save folder configuration:" << file.errorString();
+            return false;
+        }
+        return true;
     }
+    qWarning() << "Failed to open folder configuration for writing:" << file.errorString();
+    return false;
 }
