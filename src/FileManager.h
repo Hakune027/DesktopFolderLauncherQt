@@ -21,6 +21,10 @@ public:
     explicit FileManager(
         QObject *parent = nullptr);
 
+    void setFolderInfo(
+        const QString &folderId,
+        const QString &folderName);
+
     QQmlListProperty<QObject>
     items();
 
@@ -44,7 +48,6 @@ public:
     Q_INVOKABLE
     void load();
 
-    // 新增
     Q_INVOKABLE
     void save();
 
@@ -55,7 +58,13 @@ signals:
 private:
     QString dataPath();
 
+    QString legacyDataPath();
+
     QList<QObject *> m_items;
+
+    QString m_folderId;
+
+    QString m_folderName;
 };
 
 #endif

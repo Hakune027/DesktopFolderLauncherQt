@@ -50,6 +50,9 @@ qt_add_executable(
 
     src/FolderManager.cpp
     src/FolderManager.h
+
+    src/FolderData.cpp
+    src/FolderData.h
 )
 
 

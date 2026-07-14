@@ -29,6 +29,14 @@ QQmlListProperty<QObject> FileManager::items()
         &m_items);
 }
 
+void FileManager::setFolderInfo(
+    const QString &folderId,
+    const QString &folderName)
+{
+    m_folderId = folderId;
+    m_folderName = folderName;
+}
+
 QString FileManager::dataPath()
 {
 
@@ -38,8 +46,34 @@ QString FileManager::dataPath()
 
     QDir().mkpath(dir);
 
+    if (m_folderId.isEmpty())
+    {
+        return dir +
+               "/folders.json";
+    }
+
     return dir +
-           "/folders.json";
+           "/" +
+           m_folderId +
+           ".json";
+}
+
+QString FileManager::legacyDataPath()
+{
+
+    QString dir =
+        QStandardPaths::writableLocation(
+            QStandardPaths::AppLocalDataLocation);
+
+    if (m_folderName.isEmpty())
+    {
+        return QString();
+    }
+
+    return dir +
+           "/" +
+           m_folderName +
+           ".json";
 }
 
 void FileManager::addFile(QString path)
@@ -174,8 +208,38 @@ void FileManager::save()
 void FileManager::load()
 {
 
-    QFile file(dataPath());
+    QString path = dataPath();
 
+    QFile file(path);
+
+    // 迁移: 如果 UUID 文件不存在, 尝试从旧版 name.json 复制
+    if (!file.exists())
+    {
+
+        QString legacyPath =
+            legacyDataPath();
+
+        if (!legacyPath.isEmpty())
+        {
+
+            QFile legacyFile(legacyPath);
+
+            if (legacyFile.exists())
+            {
+
+                // 复制旧数据到新路径
+                legacyFile.copy(path);
+
+                qDebug()
+                    << "FileManager: 迁移数据"
+                    << legacyPath
+                    << "->"
+                    << path;
+            }
+        }
+    }
+
+    // 重新打开(可能已从旧版迁移)
     if (!file.exists())
         return;
 

@@ -4,7 +4,6 @@
 #include <QQuickWindow>
 #include "src/FolderManager.h"
 #include "src/SettingsManager.h"
-#include "src/FileManager.h"
 #include "src/DropHandler.h"
 
 int main(int argc, char *argv[])
@@ -15,10 +14,6 @@ int main(int argc, char *argv[])
     QQuickWindow::setDefaultAlphaBuffer(true);
 
     SettingsManager settings;
-
-    FileManager fileManager;
-
-    fileManager.load();
 
     FolderManager folderManager;
 
@@ -33,19 +28,13 @@ int main(int argc, char *argv[])
 
     engine.rootContext()
         ->setContextProperty(
-            "fileManager",
-            &fileManager);
-
-    engine.rootContext()
-        ->setContextProperty(
             "folderManager",
             &folderManager);
 
-    QObject::connect(
-        dropHandler,
-        &DropHandler::fileDropped,
-        &fileManager,
-        &FileManager::addFile);
+    engine.rootContext()
+        ->setContextProperty(
+            "dropHandler",
+            dropHandler);
 
     engine.loadFromModule(
         "DesktopFolderLauncher",
@@ -56,7 +45,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // Register native OLE drag-and-drop on the frameless window
+    // Register native OLE drag-and-drop on the main window (settings window)
     QQuickWindow *window =
         qobject_cast<QQuickWindow *>(
             engine.rootObjects().first());
@@ -69,7 +58,6 @@ int main(int argc, char *argv[])
     int result = app.exec();
 
     // Cleanup: revoke OLE drop target before destroying
-
     dropHandler->unregisterWindow();
 
     return result;

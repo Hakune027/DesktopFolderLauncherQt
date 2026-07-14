@@ -2,7 +2,7 @@
 #define FOLDERMANAGER_H
 
 #include <QObject>
-#include <QVariantList>
+#include <QQmlListProperty>
 
 class FolderManager : public QObject
 {
@@ -10,15 +10,17 @@ class FolderManager : public QObject
     Q_OBJECT
 
     Q_PROPERTY(
-        QVariantList folders
-            READ folders
-                NOTIFY foldersChanged)
+        QQmlListProperty<QObject>
+            folders
+                READ folders
+                    NOTIFY foldersChanged)
 
 public:
     explicit FolderManager(
         QObject *parent = nullptr);
 
-    QVariantList folders() const;
+    QQmlListProperty<QObject>
+    folders();
 
     Q_INVOKABLE
     void createFolder(
@@ -28,12 +30,27 @@ public:
     void removeFolder(
         int index);
 
+    Q_INVOKABLE
+    int folderCount();
+
+    Q_INVOKABLE
+    QObject *folderAt(
+        int index);
+
+    Q_INVOKABLE
+    void load();
+
+    Q_INVOKABLE
+    void save();
+
 signals:
 
     void foldersChanged();
 
 private:
-    QVariantList m_folders;
+    QString configPath();
+
+    QList<QObject *> m_folders;
 };
 
 #endif

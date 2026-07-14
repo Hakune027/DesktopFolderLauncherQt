@@ -1,6 +1,7 @@
 #include "DropHandler.h"
 
 #include <QDebug>
+#include <QMetaObject>
 #include <QUrl>
 
 DropHandler::DropHandler(QObject *parent)
@@ -15,33 +16,173 @@ DropHandler::~DropHandler()
 
 void DropHandler::registerWindow(QWindow *window)
 {
-    if (!window || m_registered)
-    {
+
+    if (!window)
         return;
+
+    HWND hwnd =
+        reinterpret_cast<HWND>(
+            window->winId());
+
+    // 检查是否已注册
+    for (auto &entry : m_entries)
+    {
+
+        if (entry.hwnd == hwnd)
+            return;
     }
 
-    m_hwnd = reinterpret_cast<HWND>(window->winId());
+    HRESULT hr =
+        RegisterDragDrop(
+            hwnd,
+            this);
 
-    HRESULT hr = RegisterDragDrop(m_hwnd, this);
     if (SUCCEEDED(hr))
     {
-        m_registered = true;
-        qDebug() << "DropHandler: Registered OLE drop target on HWND" << m_hwnd;
+
+        WindowEntry entry;
+
+        entry.hwnd = hwnd;
+
+        m_entries.append(entry);
+
+        qDebug()
+            << "DropHandler: 注册窗口"
+            << hwnd;
+    }
+    else if (hr == DRAGDROP_E_ALREADYREGISTERED)
+    {
+        // Qt 内部已注册 IDropTarget, 无需重复注册
+        qDebug()
+            << "DropHandler: 窗口已有拖放目标, 跳过注册"
+            << hwnd;
     }
     else
     {
-        qWarning() << "DropHandler: RegisterDragDrop failed, HRESULT:" << Qt::hex << hr;
+
+        qWarning()
+            << "DropHandler: RegisterDragDrop 失败"
+            << Qt::hex << hr;
+    }
+}
+
+void DropHandler::registerWindowTarget(
+    QWindow *window,
+    QObject *target,
+    const QString &method)
+{
+
+    if (!window || !target)
+        return;
+
+    HWND hwnd =
+        reinterpret_cast<HWND>(
+            window->winId());
+
+    // 查找已有 entry 或创建新 entry
+    WindowEntry *existing = nullptr;
+
+    for (auto &entry : m_entries)
+    {
+
+        if (entry.hwnd == hwnd)
+        {
+            existing = &entry;
+
+            break;
+        }
+    }
+
+    if (existing)
+    {
+
+        existing->target = target;
+
+        existing->method = method;
+    }
+    else
+    {
+
+        HRESULT hr =
+            RegisterDragDrop(
+                hwnd,
+                this);
+
+        if (SUCCEEDED(hr))
+        {
+
+            WindowEntry entry;
+
+            entry.hwnd = hwnd;
+
+            entry.target = target;
+
+            entry.method = method;
+
+            m_entries.append(entry);
+
+            qDebug()
+                << "DropHandler: 注册窗口(带目标)"
+                << hwnd
+                << target->metaObject()->className();
+        }
+        else if (hr == DRAGDROP_E_ALREADYREGISTERED)
+        {
+            // Qt 内部已注册 IDropTarget, QML DropArea 会处理拖放
+            qDebug()
+                << "DropHandler: 窗口已有拖放目标, 使用 QML DropArea"
+                << hwnd;
+        }
+        else
+        {
+
+            qWarning()
+                << "DropHandler: RegisterDragDrop 失败"
+                << Qt::hex << hr;
+        }
+    }
+}
+
+void DropHandler::unregisterWindowTarget(
+    QWindow *window)
+{
+
+    if (!window)
+        return;
+
+    HWND hwnd =
+        reinterpret_cast<HWND>(
+            window->winId());
+
+    for (int i = 0; i < m_entries.size(); ++i)
+    {
+
+        if (m_entries[i].hwnd == hwnd)
+        {
+
+            RevokeDragDrop(hwnd);
+
+            m_entries.removeAt(i);
+
+            qDebug()
+                << "DropHandler: 反注册窗口"
+                << hwnd;
+
+            return;
+        }
     }
 }
 
 void DropHandler::unregisterWindow()
 {
-    if (m_registered && m_hwnd)
+
+    for (auto &entry : m_entries)
     {
-        RevokeDragDrop(m_hwnd);
-        m_registered = false;
-        m_hwnd = nullptr;
+
+        RevokeDragDrop(entry.hwnd);
     }
+
+    m_entries.clear();
 }
 
 // IUnknown
@@ -131,6 +272,36 @@ HRESULT __stdcall DropHandler::DragLeave()
     return S_OK;
 }
 
+DropHandler::WindowEntry *
+DropHandler::findEntryByPoint(
+    LONG x,
+    LONG y)
+{
+
+    POINT screenPt = {x, y};
+
+    HWND hwnd = WindowFromPoint(screenPt);
+
+    // 向上遍历父窗口链, 查找已注册的 window
+    while (hwnd)
+    {
+
+        for (auto &entry : m_entries)
+        {
+
+            if (entry.hwnd == hwnd)
+            {
+
+                return &entry;
+            }
+        }
+
+        hwnd = GetParent(hwnd);
+    }
+
+    return nullptr;
+}
+
 HRESULT __stdcall DropHandler::Drop(
     IDataObject *pDataObj,
     DWORD grfKeyState,
@@ -138,7 +309,6 @@ HRESULT __stdcall DropHandler::Drop(
     DWORD *pdwEffect)
 {
     Q_UNUSED(grfKeyState);
-    Q_UNUSED(pt);
 
     if (!pDataObj || !pdwEffect)
     {
@@ -147,12 +317,41 @@ HRESULT __stdcall DropHandler::Drop(
 
     QStringList files = extractFilePaths(pDataObj);
 
-    for (const QString &file : files)
+    if (files.isEmpty())
     {
-        emit fileDropped(file);
+        *pdwEffect = DROPEFFECT_NONE;
+        return S_OK;
     }
 
-    *pdwEffect = files.isEmpty() ? DROPEFFECT_NONE : DROPEFFECT_COPY;
+    // 根据屏幕坐标找到目标窗口
+    WindowEntry *entry =
+        findEntryByPoint(pt.x, pt.y);
+
+    if (entry && entry->target)
+    {
+
+        // 直接调用目标的 addFile 方法
+        for (const QString &file : files)
+        {
+
+            QMetaObject::invokeMethod(
+                entry->target,
+                entry->method.toUtf8().constData(),
+                Q_ARG(QString, file));
+        }
+    }
+    else
+    {
+
+        // 无目标回调, 发射通用信号
+        for (const QString &file : files)
+        {
+
+            emit fileDropped(file);
+        }
+    }
+
+    *pdwEffect = DROPEFFECT_COPY;
     return S_OK;
 }
 
