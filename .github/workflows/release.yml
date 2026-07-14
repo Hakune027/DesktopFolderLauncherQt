@@ -1,0 +1,104 @@
+name: Build and publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release 版本号，例如 v1.0.0"
+        required: true
+        type: string
+      prerelease:
+        description: "标记为预发布版本"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: Windows x64 release
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Validate version
+        shell: pwsh
+        run: |
+          $version = '${{ inputs.version }}'
+          if ($version -notmatch '^v?[0-9]+\.[0-9]+\.[0-9]+(?:[-.][0-9A-Za-z.-]+)?$') {
+            throw "版本号格式无效：$version（示例：v1.0.0）"
+          }
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Qt and MinGW
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_mingw'
+          tools: 'tools_mingw1310'
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: >-
+          cmake -S . -B build-release -G "MinGW Makefiles"
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build-release --parallel $env:NUMBER_OF_PROCESSORS
+
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir build-release --output-on-failure --timeout 30
+
+      - name: Deploy Qt runtime
+        shell: pwsh
+        run: |
+          $package = Join-Path $PWD 'package\DeskFolder'
+          New-Item -ItemType Directory -Force -Path $package | Out-Null
+          Copy-Item 'build-release\DesktopFolderLauncher.exe' $package
+          windeployqt --release --compiler-runtime --qmldir qml --dir $package "$package\DesktopFolderLauncher.exe"
+          Copy-Item README.md $package -ErrorAction SilentlyContinue
+          Copy-Item LICENSE $package -ErrorAction SilentlyContinue
+
+      - name: Create archive
+        id: archive
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.version }}'
+          $archiveName = "DeskFolder-$tag-windows-x64.zip"
+          $archivePath = Join-Path $PWD $archiveName
+          Compress-Archive -Path 'package\DeskFolder' -DestinationPath $archivePath -CompressionLevel Optimal
+          "path=$archivePath" >> $env:GITHUB_OUTPUT
+          "name=$archiveName" >> $env:GITHUB_OUTPUT
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ inputs.version }}'
+          $asset = '${{ steps.archive.outputs.path }}'
+          $title = "DeskFolder $tag"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $asset --clobber
+          } else {
+            $arguments = @('release', 'create', $tag, $asset, '--target', '${{ github.sha }}', '--title', $title, '--generate-notes')
+            if ('${{ inputs.prerelease }}' -eq 'true') {
+              $arguments += '--prerelease'
+            }
+            gh @arguments
+          }
