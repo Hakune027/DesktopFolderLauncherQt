@@ -19,6 +19,27 @@
 
 #include "IconProvider.h"
 
+namespace {
+bool iconIsReferencedByFolderConfig(const QString &iconUrl, const QString &foldersPath)
+{
+    const QFileInfoList configs = QDir(foldersPath).entryInfoList(
+        {QStringLiteral("*.json")}, QDir::Files | QDir::Readable);
+    for (const QFileInfo &config : configs) {
+        QFile file(config.absoluteFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+        if (!document.isArray())
+            continue;
+        for (const QJsonValue &value : document.array()) {
+            if (value.toObject().value(QStringLiteral("icon")).toString() == iconUrl)
+                return true;
+        }
+    }
+    return false;
+}
+}
+
 FileManager::FileManager(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -102,18 +123,15 @@ QString FileManager::dataPath()
     if (dir.isEmpty())
         dir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
 
-    QDir().mkpath(dir);
+    const QString folderDir = QDir(dir).filePath(QStringLiteral("folders"));
+    QDir().mkpath(folderDir);
 
     if (m_folderId.isEmpty())
     {
-        return dir +
-               "/folders.json";
+        return QDir(folderDir).filePath(QStringLiteral("legacy.json"));
     }
 
-    return dir +
-           "/" +
-           m_folderId +
-           ".json";
+    return QDir(folderDir).filePath(m_folderId + QStringLiteral(".json"));
 }
 
 QString FileManager::legacyDataPath()
@@ -128,10 +146,10 @@ QString FileManager::legacyDataPath()
         return QString();
     }
 
-    return dir +
-           "/" +
-           m_folderName +
-           ".json";
+    const QString oldIdPath = QDir(dir).filePath(m_folderId + QStringLiteral(".json"));
+    if (!m_folderId.isEmpty() && QFile::exists(oldIdPath))
+        return oldIdPath;
+    return QDir(dir).filePath(m_folderName + QStringLiteral(".json"));
 }
 
 void FileManager::addFile(QString path)
@@ -404,6 +422,8 @@ void FileManager::removeFile(int index)
         return;
     }
 
+    const QString removedIcon = m_items.at(index)->icon();
+
     beginRemoveRows({}, index, index);
     AppItem *obj = m_items.takeAt(index);
     endRemoveRows();
@@ -413,7 +433,11 @@ void FileManager::removeFile(int index)
     if (!m_allowGaps)
         compactItems();
 
-    save();
+    if (save()) {
+        const QFileInfo currentConfig(dataPath());
+        if (!iconIsReferencedByFolderConfig(removedIcon, currentConfig.absolutePath()))
+            IconProvider::removeCachedIcon(removedIcon);
+    }
 
     emit itemsChanged();
 }

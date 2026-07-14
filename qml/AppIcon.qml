@@ -112,7 +112,7 @@ Item {
             anchors.fill: sourceIcon
             sourceItem: sourceIcon
             hideSource: appIcon.iconTone !== "original"
-            live: true
+            live: appIcon.iconTone !== "original"
             smooth: true
         }
 
@@ -230,9 +230,24 @@ Item {
             // 先更新 model
             appIcon.requestMove(appIcon.itemIndex, nx, ny);
 
-            // 修复被 drag.target 破坏的绑定
-            appIcon.x = Qt.binding(function() { return appIcon.item ? appIcon.item.x : 0; });
-            appIcon.y = Qt.binding(function() { return appIcon.item ? appIcon.item.y : 0; });
+            // 修复被 drag.target 破坏的绑定。溢出模式使用模型索引布局，
+            // 普通模式使用持久化的自由坐标布局。
+            appIcon.x = Qt.binding(function() {
+                if (!appIcon.indexedLayout)
+                    return appIcon.item ? appIcon.item.x : 0;
+                return (appIcon.horizontalLayout
+                        ? Math.floor(appIcon.layoutIndex / Math.max(1, appIcon.layoutRows)) * appIcon.cellSize
+                        : (appIcon.layoutIndex % Math.max(1, appIcon.layoutColumns)) * appIcon.cellSize)
+                        + appIcon.layoutOffsetX;
+            });
+            appIcon.y = Qt.binding(function() {
+                if (!appIcon.indexedLayout)
+                    return appIcon.item ? appIcon.item.y : 0;
+                return (appIcon.horizontalLayout
+                        ? (appIcon.layoutIndex % Math.max(1, appIcon.layoutRows)) * appIcon.verticalCellSize
+                        : Math.floor(appIcon.layoutIndex / Math.max(1, appIcon.layoutColumns)) * appIcon.verticalCellSize)
+                        + appIcon.layoutOffsetY;
+            });
         }
     }
 

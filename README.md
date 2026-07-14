@@ -14,7 +14,7 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 数据
 
-配置保存在 `QStandardPaths::AppLocalDataLocation`，图标缓存在 `QStandardPaths::CacheLocation`。配置通过原子写入保存；无法解析的文件会保留并复制为 `.corrupt`，便于人工恢复。
+配置保存在 `QStandardPaths::AppLocalDataLocation`：全局配置位于 `config/`，各文件夹项目位于 `folders/`，自定义封面位于 `covers/`。旧版根目录配置会在启动时自动迁移。配置通过原子写入保存；无法解析的文件会保留并复制为 `.corrupt`，便于人工恢复。卸载时可以选择保留或删除全部用户配置。
 
 ## 目前的平台范围
 

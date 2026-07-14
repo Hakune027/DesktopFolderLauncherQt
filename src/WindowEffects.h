@@ -19,12 +19,14 @@ public:
     Q_INVOKABLE void animateGeometry(QWindow *window, int x, int y,
                                      int width, int height, int duration = 240);
     Q_INVOKABLE void sendToDesktopLayer(QWindow *window);
+    Q_INVOKABLE void raiseInDesktopLayer(QWindow *window);
 
 signals:
     void desktopClicked();
 
 private:
     QHash<QWindow *, QPointer<QVariantAnimation>> m_geometryAnimations;
+    QList<QPointer<QWindow>> m_desktopWindows;
     QTimer *m_desktopClickTimer = nullptr;
     bool m_leftButtonDown = false;
 };

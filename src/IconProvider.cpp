@@ -7,6 +7,7 @@
 #include <QUrl>
 #include <QCryptographicHash>
 #include <QImage>
+#include <QFile>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -115,4 +116,26 @@ QString IconProvider::getIcon(const QString &filePath)
         << savePath;
 
     return QUrl::fromLocalFile(savePath).toString();
+}
+
+bool IconProvider::removeCachedIcon(const QString &iconUrl)
+{
+    const QUrl url(iconUrl);
+    const QString localPath = url.isLocalFile() ? url.toLocalFile() : iconUrl;
+    if (localPath.isEmpty())
+        return false;
+
+    const QString cacheRoot = QDir::cleanPath(
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    const QString iconPath = QDir::cleanPath(QFileInfo(localPath).absoluteFilePath());
+    const QString cachePrefix = cacheRoot + QDir::separator();
+
+    // Only remove files generated inside this application's cache directory.
+    // User-selected images and source application files must never be touched.
+    if (!iconPath.startsWith(cachePrefix, Qt::CaseInsensitive)
+        || QFileInfo(iconPath).suffix().compare(QStringLiteral("png"), Qt::CaseInsensitive) != 0) {
+        return false;
+    }
+
+    return !QFileInfo::exists(iconPath) || QFile::remove(iconPath);
 }

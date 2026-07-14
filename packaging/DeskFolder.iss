@@ -11,6 +11,7 @@
 #define MyAppName "DeskFolder"
 #define MyAppExeName "DesktopFolderLauncher.exe"
 #define MyAppPublisher "DeskFolder"
+#define MyAppDataDir "DesktopFolderLauncher"
 
 [Setup]
 AppId={{0F252019-1D64-4E4A-BB44-D30AA9051D45}
@@ -47,7 +48,41 @@ Source: "..\package\DeskFolder\*"; DestDir: "{app}"; Flags: ignoreversion recurs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\卸载 {#MyAppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "DesktopFolderLauncher"; Flags: uninsdeletevalue
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\{#MyAppDataDir}"; Check: ShouldDeleteUserData
+
+[Code]
+var
+  KeepUserData: Boolean;
+
+function InitializeUninstall(): Boolean;
+var
+  Choice: Integer;
+begin
+  Choice := MsgBox(
+    '是否保留 DeskFolder 的文件夹配置？' + #13#10 + #13#10 +
+    '选择“是”将保留文件夹、布局、外观设置和自定义封面。' + #13#10 +
+    '选择“否”将删除全部用户配置。',
+    mbConfirmation, MB_YESNOCANCEL);
+  if Choice = IDCANCEL then
+  begin
+    Result := False;
+    exit;
+  end;
+  KeepUserData := Choice = IDYES;
+  Result := True;
+end;
+
+function ShouldDeleteUserData(): Boolean;
+begin
+  Result := not KeepUserData;
+end;

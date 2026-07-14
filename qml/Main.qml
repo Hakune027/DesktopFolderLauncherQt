@@ -12,7 +12,22 @@ Window {
 
     color: "transparent"
 
-    SettingsWindow {}
+    FolderSettingsWindow {
+        id: sharedFolderSettingsWindow
+    }
 
-    FolderSpawner {}
+    FolderSettingsWindow {
+        id: defaultFolderSettingsWindow
+        folderData: folderManager.defaultFolderData
+        editingDefaults: true
+    }
+
+    SettingsWindow {
+        folderSettingsHost: sharedFolderSettingsWindow
+        defaultSettingsHost: defaultFolderSettingsWindow
+    }
+
+    FolderSpawner {
+        folderSettingsHost: sharedFolderSettingsWindow
+    }
 }

@@ -96,6 +96,12 @@ qt_add_qml_module(
         assets/icons/lock.svg
         assets/icons/startup.svg
         assets/icons/close.svg
+        assets/covers/arrows.svg
+        assets/covers/multitask.svg
+        assets/covers/projects.svg
+        assets/covers/arrows-light.svg
+        assets/covers/multitask-light.svg
+        assets/covers/projects-light.svg
 
 )
 
@@ -123,6 +129,7 @@ target_link_libraries(
 target_compile_definitions(DesktopFolderLauncher PRIVATE
     DESK_FOLDER_VERSION="${DESK_FOLDER_VERSION}"
 )
+set_target_properties(DesktopFolderLauncher PROPERTIES WIN32_EXECUTABLE TRUE)
 if(WIN32)
     target_sources(DesktopFolderLauncher PRIVATE resources/app.rc)
     target_link_libraries(DesktopFolderLauncher PRIVATE ole32 shell32 dwmapi)

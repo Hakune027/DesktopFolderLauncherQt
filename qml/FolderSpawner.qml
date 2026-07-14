@@ -2,6 +2,7 @@ import QtQuick
 
 Item {
     id: root
+    property var folderSettingsHost
 
     // 已创建的窗口映射: key -> window
     property var windowMap: ({})
@@ -69,10 +70,21 @@ Item {
                 continue;
 
             let folder = folderComponent.createObject(null, {
-                "folderData": data
+                "folderData": data,
+                "folderSettingsHost": root.folderSettingsHost
             });
 
             if (folder) {
+                folder.expansionRequested.connect(function(expandedWindow) {
+                    for (let existingKey in root.windowMap) {
+                        let existingWindow = root.windowMap[existingKey];
+                        if (existingWindow && existingWindow !== expandedWindow
+                                && existingWindow.overflowExpanded) {
+                            existingWindow.overflowExpanded = false;
+                        }
+                    }
+                });
+
                 console.log(
                     "[FolderSpawner] 创建窗口:",
                     data.name,

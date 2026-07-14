@@ -6,16 +6,37 @@ import QtQuick.Window
 Window {
     id: root
     property var folderData
+    property bool editingDefaults: false
     property var borderStyleValues: ["none", "subtle", "solid", "accent", "double"]
     property var expansionDirectionValues: ["down", "up", "right", "left"]
+    property var overflowCoverValues: ["",
+        "qrc:/qt/qml/DesktopFolderLauncher/assets/covers/arrows.svg",
+        "qrc:/qt/qml/DesktopFolderLauncher/assets/covers/multitask.svg",
+        "qrc:/qt/qml/DesktopFolderLauncher/assets/covers/projects.svg"]
+    property string persistenceErrorText: ""
 
-    width: 700
-    height: 590
-    minimumWidth: 620
-    minimumHeight: 460
+    Connections {
+        target: folderManager
+        function onPersistenceError(message) {
+            root.persistenceErrorText = message;
+            persistenceErrorTimer.restart();
+        }
+    }
+
+    Timer {
+        id: persistenceErrorTimer
+        interval: 5000
+        onTriggered: root.persistenceErrorText = ""
+    }
+
+    width: 820
+    height: 620
+    minimumWidth: 720
+    minimumHeight: 520
     visible: false
     flags: Qt.Window | Qt.FramelessWindowHint
-    title: folderData ? folderData.name + " - 文件夹设置" : "文件夹设置"
+    title: editingDefaults ? "新建文件夹默认设置"
+                           : (folderData ? folderData.name + " - 文件夹设置" : "文件夹设置")
     color: Qt.rgba(0.055, 0.06, 0.075, 0.62)
     palette.window: "#17181d"
     palette.windowText: "#f5f5f5"
@@ -51,12 +72,6 @@ Window {
     function requestGridSize(columns, rows, changedAxis) {
         if (!root.folderData)
             return;
-        if (columns * rows < 2) {
-            if (changedAxis === "columns")
-                rows = 2;
-            else
-                columns = 2;
-        }
         if (!root.folderData.overflowMode
                 && columns * rows < root.folderData.itemCount) {
             root.pendingGridColumns = columns;
@@ -66,8 +81,10 @@ Window {
         }
         root.applyGridSize(columns, rows);
     }
-    function openForFolderWindow() {
-        let owner = root.transientParent;
+    function openForFolderWindow(ownerWindow) {
+        if (ownerWindow)
+            root.transientParent = ownerWindow;
+        let owner = ownerWindow || root.transientParent;
         let targetScreen = owner && owner.screen ? owner.screen : root.screen;
         let desiredX = owner ? owner.x + Math.round((owner.width - root.width) / 2) : root.x;
         let desiredY = owner ? owner.y + Math.round((owner.height - root.height) / 2) : root.y;
@@ -125,6 +142,28 @@ Window {
         }
     }
 
+    Rectangle {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 24
+        z: 1000
+        visible: root.persistenceErrorText !== ""
+        width: Math.min(folderErrorLabel.implicitWidth + 32, root.width - 48)
+        height: folderErrorLabel.implicitHeight + 20
+        radius: 8
+        color: "#e63b2024"
+        border.color: "#ff7b83"
+
+        Label {
+            id: folderErrorLabel
+            anchors.centerIn: parent
+            width: parent.width - 32
+            text: root.persistenceErrorText
+            color: "white"
+            wrapMode: Text.WordWrap
+        }
+    }
+
     // ═══════════════════════════════════════════
     // Custom Toggle Switch
     // ═══════════════════════════════════════════
@@ -161,14 +200,14 @@ Window {
         property string sectionTitle: ""
         Layout.fillWidth: true
         Layout.preferredHeight: cardContent.implicitHeight + 40
-        radius: 14
+        radius: 12
         color: "#0cffffff"
         border.color: "#14ffffff"
 
         ColumnLayout {
             id: cardContent
             anchors.fill: parent
-            anchors.margins: 18
+            anchors.margins: 16
             spacing: 12
 
             RowLayout {
@@ -289,6 +328,110 @@ Window {
         }
     }
 
+    component StyledComboBox: ComboBox {
+        id: combo
+        implicitHeight: 36
+        leftPadding: 12
+        rightPadding: 38
+        font.pixelSize: 13
+
+        contentItem: Label {
+            text: combo.displayText
+            color: combo.enabled ? "#f0f0f5" : "#70f0f0f5"
+            font: combo.font
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+
+        indicator: Item {
+            x: combo.width - width - 12
+            y: Math.round((combo.height - height) / 2)
+            width: 14
+            height: 10
+            rotation: combo.popup.visible ? 180 : 0
+            Behavior on rotation { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Rectangle {
+                width: 8; height: 2; radius: 1
+                color: combo.enabled ? "#aeb5c6" : "#55aeb5c6"
+                rotation: 40
+                x: 0; y: 4
+            }
+            Rectangle {
+                width: 8; height: 2; radius: 1
+                color: combo.enabled ? "#aeb5c6" : "#55aeb5c6"
+                rotation: -40
+                x: 6; y: 4
+            }
+        }
+
+        background: Rectangle {
+            radius: 8
+            color: combo.pressed ? "#20ffffff"
+                                 : combo.hovered ? "#18ffffff" : "#10ffffff"
+            border.width: 1
+            border.color: combo.popup.visible ? "#667b83ff" : "#22ffffff"
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+        }
+
+        delegate: ItemDelegate {
+            required property int index
+            width: ListView.view ? ListView.view.width : combo.width - 12
+            height: 38
+            highlighted: combo.highlightedIndex === index
+
+            contentItem: Label {
+                leftPadding: 12
+                text: combo.textAt(index)
+                color: highlighted ? "#ffffff" : "#c7c9d1"
+                font.pixelSize: 13
+                verticalAlignment: Text.AlignVCenter
+            }
+            background: Rectangle {
+                radius: 7
+                color: highlighted ? "#227b83ff" : "transparent"
+                Rectangle {
+                    visible: combo.currentIndex === index
+                    anchors.left: parent.left
+                    anchors.leftMargin: 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 3; height: 20; radius: 2
+                    color: "#8d9aff"
+                }
+            }
+        }
+
+        popup: Popup {
+            y: combo.height + 6
+            width: combo.width
+            implicitHeight: Math.min(contentItem.implicitHeight + 12, 260)
+            padding: 6
+            popupType: Popup.Item
+
+            contentItem: ListView {
+                clip: true
+                implicitHeight: contentHeight
+                model: combo.delegateModel
+                currentIndex: combo.highlightedIndex
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollIndicator.vertical: ScrollIndicator { }
+            }
+            background: Rectangle {
+                radius: 10
+                color: "#f02a2c33"
+                border.width: 1
+                border.color: "#38ffffff"
+            }
+            enter: Transition {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 110 }
+                NumberAnimation { property: "scale"; from: 0.97; to: 1; duration: 130; easing.type: Easing.OutCubic }
+            }
+            exit: Transition {
+                NumberAnimation { property: "opacity"; to: 0; duration: 90 }
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════
     // Main Layout
     // ═══════════════════════════════════════════
@@ -338,7 +481,8 @@ Window {
 
                 Label {
                     Layout.fillWidth: true
-                    text: root.folderData ? root.folderData.name + " · 文件夹设置" : "文件夹设置"
+                    text: root.editingDefaults ? "新建文件夹 · 默认设置"
+                                               : (root.folderData ? root.folderData.name + " · 文件夹设置" : "文件夹设置")
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     color: "#f0f0f5"
@@ -383,7 +527,7 @@ Window {
 
             // ── Sidebar ──────────────────────
             Rectangle {
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: 142
                 Layout.fillHeight: true
                 color: "transparent"
 
@@ -404,8 +548,9 @@ Window {
                     Repeater {
                         model: [
                             { icon: "appearance", label: "外观", page: 0 },
-                            { icon: "layout", label: "布局", page: 1 },
-                            { icon: "behavior", label: "行为", page: 2 }
+                            { icon: "layout", label: "网格与尺寸", page: 1 },
+                            { icon: "appearance", label: "图标与文字", page: 2 },
+                            { icon: "behavior", label: "交互行为", page: 3 }
                         ]
 
                         delegate: Rectangle {
@@ -468,7 +613,7 @@ Window {
                 id: sidebarNav
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: 22
+                Layout.leftMargin: 16
                 currentIndex: 0
 
                 // Page 0: Appearance
@@ -581,7 +726,7 @@ Window {
 
                                 SettingRow {
                                     title: "边框样式"
-                                    ComboBox {
+                                    StyledComboBox {
                                         Layout.fillWidth: true
                                         enabled: !root.folderData || !root.folderData.frostedGlass
                                         model: ["无边框", "轻描边", "实线", "强调色", "双层边框"]
@@ -717,7 +862,7 @@ Window {
                     }
                 }
 
-                // Page 2: Behavior
+                // Page 2: Icons and labels
                 ScrollView {
                     clip: true
                     contentWidth: availableWidth
@@ -741,7 +886,7 @@ Window {
                                 SettingRow {
                                     title: "图标色调"
                                     Layout.preferredHeight: 38
-                                    ComboBox {
+                                    StyledComboBox {
                                         id: iconToneCombo
                                         Layout.preferredWidth: 126
                                         model: ["原色", "灰度"]
@@ -802,11 +947,57 @@ Window {
                                     Item { Layout.fillWidth: true }
                                 }
 
+                                SettingRow {
+                                    title: "缩略区封面"
+                                    visible: sidebarNav.currentIndex === 2
+                                    Layout.preferredHeight: 38
+                                    StyledComboBox {
+                                        Layout.preferredWidth: 150
+                                        model: ["无封面", "方向箭头", "多任务", "多项目"]
+                                        currentIndex: root.folderData ? Math.max(0, root.overflowCoverValues.indexOf(root.folderData.overflowCover)) : 0
+                                        onActivated: function(index) {
+                                            if (root.folderData) { root.folderData.overflowCover = root.overflowCoverValues[index]; root.persist(); }
+                                        }
+                                    }
+                                    Button {
+                                        text: "选择图片"
+                                        onClicked: {
+                                            const selected = appController.chooseImageFile();
+                                            if (selected !== "" && root.folderData) { root.folderData.overflowCover = selected; root.persist(); }
+                                        }
+                                    }
+                                    Button {
+                                        text: "清除"
+                                        enabled: root.folderData && root.folderData.overflowCover !== ""
+                                        onClicked: { root.folderData.overflowCover = ""; root.persist(); }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+
                                 InfoCallout {
                                     calloutText: "**图标色调**  ·  灰度模式统一图标色调并保留明暗层次。\n\n**图标外边缘**  ·  为所有图标添加统一圆角边缘，并将图标缩进显示在边缘内部。"
                                 }
                             }
                         }
+
+                    }
+                }
+
+                // Page 3: Interaction behavior
+                ScrollView {
+                    clip: true
+                    contentWidth: availableWidth
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        contentItem: Rectangle {
+                            implicitWidth: 4; radius: 2
+                            color: "#30ffffff"
+                        }
+                    }
+
+                    ColumnLayout {
+                        width: parent.width
+                        spacing: 14
 
                         SectionCard {
                             sectionTitle: "窗口行为"
@@ -849,7 +1040,7 @@ Window {
                                 SettingRow {
                                     title: "展开方向"
                                     Layout.preferredHeight: 36
-                                    ComboBox {
+                                    StyledComboBox {
                                         Layout.preferredWidth: 170
                                         enabled: root.folderData && root.folderData.overflowMode
                                         model: ["向下", "向上", "向右", "向左"]
@@ -860,6 +1051,79 @@ Window {
                                             if (root.folderData)
                                                 root.folderData.expansionDirection
                                                         = root.expansionDirectionValues[index];
+                                            root.persist();
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+
+                                SettingRow {
+                                    title: "缩略区封面"
+                                    visible: sidebarNav.currentIndex === 2
+                                    Layout.preferredHeight: 38
+                                    StyledComboBox {
+                                        Layout.preferredWidth: 150
+                                        model: ["无封面", "方向箭头", "多任务", "多项目"]
+                                        currentIndex: root.folderData ? Math.max(0, root.overflowCoverValues.indexOf(root.folderData.overflowCover)) : 0
+                                        onActivated: function(index) {
+                                            if (root.folderData) {
+                                                root.folderData.overflowCover = root.overflowCoverValues[index];
+                                                root.persist();
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: "选择图片"
+                                        onClicked: {
+                                            const selected = appController.chooseImageFile();
+                                            if (selected !== "" && root.folderData) {
+                                                root.folderData.overflowCover = selected;
+                                                root.persist();
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: "清除"
+                                        enabled: root.folderData && root.folderData.overflowCover !== ""
+                                        onClicked: {
+                                            root.folderData.overflowCover = "";
+                                            root.persist();
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+
+                                SettingRow {
+                                    title: "缩略区封面"
+                                    visible: sidebarNav.currentIndex === 2
+                                    Layout.preferredHeight: 38
+                                    StyledComboBox {
+                                        Layout.preferredWidth: 150
+                                        model: ["无封面", "方向箭头", "多任务", "多项目"]
+                                        currentIndex: root.folderData
+                                                      ? Math.max(0, root.overflowCoverValues.indexOf(root.folderData.overflowCover)) : 0
+                                        onActivated: function(index) {
+                                            if (root.folderData) {
+                                                root.folderData.overflowCover = root.overflowCoverValues[index];
+                                                root.persist();
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: "选择图片"
+                                        onClicked: {
+                                            const selected = appController.chooseImageFile();
+                                            if (selected !== "" && root.folderData) {
+                                                root.folderData.overflowCover = selected;
+                                                root.persist();
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: "清除"
+                                        enabled: root.folderData && root.folderData.overflowCover !== ""
+                                        onClicked: {
+                                            root.folderData.overflowCover = "";
                                             root.persist();
                                         }
                                     }

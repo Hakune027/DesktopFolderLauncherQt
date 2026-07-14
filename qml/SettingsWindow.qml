@@ -7,10 +7,10 @@ Window {
     id: root
     objectName: "settingsWindow"
     transientParent: null
-    width: 740
-    height: 640
-    minimumWidth: 620
-    minimumHeight: 480
+    width: 820
+    height: 620
+    minimumWidth: 720
+    minimumHeight: 520
     visible: false
     flags: Qt.Window | Qt.FramelessWindowHint
     title: ""
@@ -24,6 +24,25 @@ Window {
     palette.highlight: "#7b83ff"
     palette.highlightedText: "white"
     property int settingsPage: 0
+    property var folderSettingsHost
+    property var defaultSettingsHost
+    property int pendingDeleteIndex: -1
+    property string pendingDeleteName: ""
+    property string persistenceErrorText: ""
+
+    Connections {
+        target: folderManager
+        function onPersistenceError(message) {
+            root.persistenceErrorText = message;
+            persistenceErrorTimer.restart();
+        }
+    }
+
+    Timer {
+        id: persistenceErrorTimer
+        interval: 5000
+        onTriggered: root.persistenceErrorText = ""
+    }
 
     // Pastel colors for folder icons — deterministic from name
     property var folderColors: [
@@ -105,10 +124,11 @@ Window {
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         anchors.centerIn: parent
+        width: Math.min(420, root.width - 48)
 
-        ColumnLayout {
-            width: 320
-            spacing: 10
+        contentItem: ColumnLayout {
+            width: newFolderDialog.availableWidth
+            spacing: 12
             Label {
                 text: "为桌面文件夹输入一个名称"
                 color: "#b7b8c0"
@@ -117,6 +137,8 @@ Window {
             TextField {
                 id: folderNameInput
                 Layout.fillWidth: true
+                Layout.preferredWidth: newFolderDialog.availableWidth
+                Layout.maximumWidth: newFolderDialog.availableWidth
                 placeholderText: "文件夹名称"
                 selectByMouse: true
                 onAccepted: newFolderDialog.accept()
@@ -134,6 +156,39 @@ Window {
             folderNameInput.clear();
         }
         onRejected: folderNameInput.clear()
+    }
+
+    function openDefaultFolderSettings() {
+        if (!root.defaultSettingsHost)
+            return;
+        root.defaultSettingsHost.openForFolderWindow(root);
+    }
+
+    Dialog {
+        id: deleteFolderDialog
+        title: "删除文件夹"
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        width: Math.min(420, root.width - 48)
+
+        contentItem: Label {
+            width: deleteFolderDialog.availableWidth
+            text: "确定删除“" + root.pendingDeleteName + "”吗？此操作不会删除原始文件。"
+            color: "#e7e7ea"
+            wrapMode: Text.WordWrap
+        }
+
+        onAccepted: {
+            if (root.pendingDeleteIndex >= 0)
+                folderManager.removeFolder(root.pendingDeleteIndex);
+            root.pendingDeleteIndex = -1;
+            root.pendingDeleteName = "";
+        }
+        onRejected: {
+            root.pendingDeleteIndex = -1;
+            root.pendingDeleteName = "";
+        }
     }
 
     Rectangle {
@@ -194,16 +249,93 @@ Window {
         }
     }
 
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: 42
+        height: 1
+        color: "#14ffffff"
+    }
+
+    Rectangle {
+        x: 16
+        y: 57
+        width: 142
+        height: root.height - y - 16
+        color: "transparent"
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 4
+
+            Label {
+                text: "设置"
+                color: "#7e7f88"
+                font.pixelSize: 12
+                Layout.leftMargin: 12
+                Layout.bottomMargin: 8
+            }
+
+            Repeater {
+                model: [
+                    { icon: "folder", label: "文件夹", page: 0 },
+                    { icon: "settings", label: "新建默认值", page: 2 },
+                    { icon: "info", label: "应用与关于", page: 1 }
+                ]
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property bool active: root.settingsPage === modelData.page
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    radius: 8
+                    color: active ? "#1a7b83ff" : (totalNavHover.hovered ? "#0affffff" : "transparent")
+
+                    Rectangle {
+                        visible: parent.active
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3; height: 20; radius: 2
+                        color: "#7b83ff"
+                    }
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        spacing: 10
+                        FluentIcon { name: modelData.icon; width: 18; height: 18; opacity: parent.parent.active ? 1 : 0.7 }
+                        Label {
+                            text: modelData.label
+                            color: parent.parent.active ? "#f0f0f5" : "#a0a1ac"
+                            font.pixelSize: 13
+                            font.weight: parent.parent.active ? Font.DemiBold : Font.Normal
+                        }
+                    }
+                    HoverHandler { id: totalNavHover }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.settingsPage = modelData.page;
+                            if (modelData.page === 2)
+                                root.openDefaultFolderSettings();
+                        }
+                    }
+                }
+            }
+            Item { Layout.fillHeight: true }
+        }
+    }
+
     // ═══════════════════════════════════════════
     // Main Layout
     // ═══════════════════════════════════════════
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 28
-        anchors.rightMargin: 28
-        anchors.topMargin: 56
-        anchors.bottomMargin: 24
-        spacing: 15
+        anchors.leftMargin: 174
+        anchors.rightMargin: 16
+        anchors.topMargin: 57
+        anchors.bottomMargin: 16
+        spacing: 12
 
         // ── Header ───────────────────────────
         RowLayout {
@@ -211,21 +343,26 @@ Window {
             spacing: 13
 
             Rectangle {
-                width: 42; height: 42; radius: 10
-                color: "#e7e9ff"
-                FluentIcon { anchors.centerIn: parent; name: "app"; width: 32; height: 32 }
+                width: 38; height: 38; radius: 9
+                color: "#1a7b83ff"
+                FluentIcon { anchors.centerIn: parent; name: "app"; width: 26; height: 26 }
             }
 
             ColumnLayout {
                 spacing: 1
                 Label {
-                    text: "桌面文件夹"
-                    font.pixelSize: 24
+                    text: root.settingsPage === 0 ? "桌面文件夹"
+                          : root.settingsPage === 2 ? "新建默认值" : "应用设置"
+                    font.pixelSize: 21
                     font.weight: Font.DemiBold
                     color: "#f5f5f5"
                 }
                 Label {
-                    text: "管理文件夹、外观与窗口行为"
+                    text: root.settingsPage === 0
+                          ? "管理文件夹并进入每个文件夹的独立设置"
+                          : root.settingsPage === 2
+                            ? "这些参数只应用于之后创建的文件夹"
+                            : "启动选项、版本信息与应用说明"
                     color: "#7e7f88"
                     font.pixelSize: 13
                 }
@@ -238,6 +375,7 @@ Window {
                 text: root.settingsPage === 0 ? "关于" : "返回文件夹"
                 flat: true
                 font.pixelSize: 13
+                visible: false
                 onClicked: root.settingsPage = root.settingsPage === 0 ? 1 : 0
                 contentItem: Row {
                     spacing: 7
@@ -341,18 +479,10 @@ Window {
                 border.width: 1
                 border.color: cardHover.hovered ? "#22ffffff" : "#12ffffff"
 
-                scale: cardHover.hovered ? 1.01 : 1.0
-                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 Behavior on color { ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
                 Behavior on border.color { ColorAnimation { duration: 160 } }
 
                 HoverHandler { id: cardHover }
-
-                FolderSettingsWindow {
-                    id: perFolderSettings
-                    folderData: model.folderData
-                    transientParent: root
-                }
 
                 RowLayout {
                     anchors.fill: parent
@@ -426,7 +556,12 @@ Window {
                             Behavior on color { ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
                         }
 
-                        onClicked: perFolderSettings.openForFolderWindow()
+                        onClicked: {
+                            if (!root.folderSettingsHost)
+                                return;
+                            root.folderSettingsHost.folderData = model.folderData;
+                            root.folderSettingsHost.openForFolderWindow(root);
+                        }
                     }
 
                     Button {
@@ -447,7 +582,11 @@ Window {
                             Behavior on color { ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
                         }
 
-                        onClicked: folderManager.removeFolder(index)
+                        onClicked: {
+                            root.pendingDeleteIndex = index;
+                            root.pendingDeleteName = model.folderData.name;
+                            deleteFolderDialog.open();
+                        }
                     }
                 }
             }
@@ -497,15 +636,15 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.settingsPage === 1
-            radius: 14
+            radius: 12
             color: "#0affffff"
             border.width: 1
             border.color: "#14ffffff"
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 26
-                spacing: 18
+                anchors.margins: 20
+                spacing: 14
 
                 ColumnLayout {
                     spacing: 3
@@ -580,6 +719,181 @@ Window {
                 }
 
                 Item { Layout.fillHeight: true }
+            }
+        }
+    }
+
+    Rectangle {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 24
+        z: 1000
+        visible: root.persistenceErrorText !== ""
+        width: Math.min(errorLabel.implicitWidth + 32, root.width - 48)
+        height: errorLabel.implicitHeight + 20
+        radius: 8
+        color: "#e63b2024"
+        border.color: "#ff7b83"
+
+        Label {
+            id: errorLabel
+            anchors.centerIn: parent
+            width: parent.width - 32
+            text: root.persistenceErrorText
+            color: "white"
+            wrapMode: Text.WordWrap
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.settingsPage === 2
+            radius: 12
+            color: "#0affffff"
+            border.width: 1
+            border.color: "#14ffffff"
+
+            ColumnLayout {
+                visible: false
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 16
+
+                Label {
+                    text: "初始网格"
+                    color: "#e7e7ea"
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+                    Label { text: "文件夹容量"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    SpinBox {
+                        from: 1; to: 12; editable: true
+                        value: folderManager.defaultGridColumns
+                        onValueModified: folderManager.defaultGridColumns = value
+                    }
+                    Label { text: "×"; color: "#8f909a"; font.pixelSize: 18 }
+                    SpinBox {
+                        from: 1; to: 12; editable: true
+                        value: folderManager.defaultGridRows
+                        onValueModified: folderManager.defaultGridRows = value
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: "#12ffffff" }
+                Label {
+                    text: "图标与留白"
+                    color: "#e7e7ea"
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "图标大小"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    Slider {
+                        id: defaultIconSizeSlider
+                        Layout.fillWidth: true
+                        from: 32; to: 96; stepSize: 4
+                        value: folderManager.defaultIconSize
+                        onPressedChanged: if (!pressed) folderManager.defaultIconSize = Math.round(value)
+                    }
+                    Label { text: Math.round(defaultIconSizeSlider.value) + " px"; color: "#b7b8c0"; Layout.preferredWidth: 54 }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "图标间距"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    Slider {
+                        id: defaultSpacingSlider
+                        Layout.fillWidth: true
+                        from: 24; to: 80; stepSize: 4
+                        value: folderManager.defaultIconSpacing
+                        onPressedChanged: if (!pressed) folderManager.defaultIconSpacing = Math.round(value)
+                    }
+                    Label { text: Math.round(defaultSpacingSlider.value) + " px"; color: "#b7b8c0"; Layout.preferredWidth: 54 }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "边缘间距"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    Slider {
+                        id: defaultEdgeSlider
+                        Layout.fillWidth: true
+                        from: 0; to: 80; stepSize: 4
+                        value: folderManager.defaultEdgePadding
+                        onPressedChanged: if (!pressed) folderManager.defaultEdgePadding = Math.round(value)
+                    }
+                    Label { text: Math.round(defaultEdgeSlider.value) + " px"; color: "#b7b8c0"; Layout.preferredWidth: 54 }
+                }
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: "#12ffffff" }
+                Label {
+                    text: "初始行为与材质"
+                    color: "#e7e7ea"
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "溢出收纳"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    ToggleSwitch {
+                        checked: folderManager.defaultOverflowMode
+                        onToggled: function(c) { folderManager.defaultOverflowMode = c }
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "磨砂玻璃"; color: "#c5c5cc"; Layout.preferredWidth: 150 }
+                    ToggleSwitch {
+                        checked: folderManager.defaultFrostedGlass
+                        onToggled: function(c) { folderManager.defaultFrostedGlass = c }
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: "修改默认值不会覆盖已有文件夹的独立设置。"
+                    color: "#7e7f88"
+                    font.pixelSize: 12
+                    wrapMode: Text.WordWrap
+                }
+                Item { Layout.fillHeight: true }
+            }
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                width: Math.min(420, parent.width - 48)
+                spacing: 14
+                FluentIcon {
+                    name: "settings"
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 44
+                    Layout.preferredHeight: 44
+                }
+                Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "完整默认文件夹设置"
+                    color: "#f0f0f5"
+                    font.pixelSize: 18
+                    font.weight: Font.DemiBold
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: "默认设置与独立文件夹设置使用同一套页面，包含外观、网格、图标、封面和交互行为。"
+                    color: "#8f909a"
+                    font.pixelSize: 13
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+                Button {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "打开完整设置"
+                    onClicked: root.openDefaultFolderSettings()
+                }
             }
         }
     }

@@ -49,6 +49,43 @@ private slots:
         manager.removeFolder(index.row());
     }
 
+    void newFolderUsesSavedDefaults()
+    {
+        FolderManager manager;
+        manager.setDefaultGridColumns(4);
+        manager.setDefaultGridRows(3);
+        manager.setDefaultIconSize(72);
+        manager.setDefaultIconSpacing(44);
+        manager.setDefaultEdgePadding(28);
+        manager.setDefaultOverflowMode(true);
+        manager.setDefaultFrostedGlass(true);
+        manager.createFolder("Defaults Test Folder");
+
+        auto *folder = qobject_cast<FolderData *>(manager.folderAt(manager.rowCount() - 1));
+        QVERIFY(folder);
+        QCOMPARE(folder->gridColumns(), 4);
+        QCOMPARE(folder->gridRows(), 3);
+        QCOMPARE(folder->iconSize(), 72);
+        QCOMPARE(folder->iconSpacing(), 44);
+        QCOMPARE(folder->edgePadding(), 28);
+        QVERIFY(folder->overflowMode());
+        QVERIFY(folder->frostedGlass());
+        manager.removeFolder(manager.rowCount() - 1);
+    }
+
+    void oneByOneGridIsAllowed()
+    {
+        FolderManager manager;
+        manager.setDefaultGridColumns(1);
+        manager.setDefaultGridRows(1);
+        manager.createFolder("One Cell Folder");
+        auto *folder = qobject_cast<FolderData *>(manager.folderAt(manager.rowCount() - 1));
+        QVERIFY(folder);
+        QCOMPARE(folder->gridColumns(), 1);
+        QCOMPARE(folder->gridRows(), 1);
+        manager.removeFolder(manager.rowCount() - 1);
+    }
+
 private:
     QString m_dataDir;
 };

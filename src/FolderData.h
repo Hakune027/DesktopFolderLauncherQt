@@ -51,6 +51,7 @@ class FolderData : public QObject
     Q_PROPERTY(QString borderStyle READ borderStyle WRITE setBorderStyle NOTIFY appearanceChanged)
     Q_PROPERTY(bool overflowMode READ overflowMode WRITE setOverflowMode NOTIFY appearanceChanged)
     Q_PROPERTY(QString expansionDirection READ expansionDirection WRITE setExpansionDirection NOTIFY appearanceChanged)
+    Q_PROPERTY(QString overflowCover READ overflowCover WRITE setOverflowCover NOTIFY appearanceChanged)
 
 public:
     explicit FolderData(
@@ -91,6 +92,7 @@ public:
     QString borderStyle() const;
     bool overflowMode() const;
     QString expansionDirection() const;
+    QString overflowCover() const;
 
     void setCornerRadius(int value);
     void setBackgroundStyle(const QString &value);
@@ -110,6 +112,7 @@ public:
     void setBorderStyle(const QString &value);
     void setOverflowMode(bool value);
     void setExpansionDirection(const QString &value);
+    void setOverflowCover(const QString &value);
 
     Q_INVOKABLE
     void setWindowPosition(
@@ -128,6 +131,7 @@ public:
         int index);
 
     Q_INVOKABLE void moveItemToPosition(int index, int x, int y);
+    Q_INVOKABLE void moveItem(int from, int to);
 
     Q_INVOKABLE
     void openLocation(
@@ -175,6 +179,7 @@ private:
     QString m_borderStyle = QStringLiteral("subtle");
     bool m_overflowMode = false;
     QString m_expansionDirection = QStringLiteral("down");
+    QString m_overflowCover;
 
     FileManager *m_fileManager;
 };

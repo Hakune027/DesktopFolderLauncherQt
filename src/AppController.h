@@ -14,6 +14,7 @@ public:
     bool autoStartEnabled() const;
     void setAutoStartEnabled(bool enabled);
     QString appVersion() const;
+    Q_INVOKABLE QString chooseImageFile() const;
 
 signals:
     void autoStartEnabledChanged();

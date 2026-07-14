@@ -8,16 +8,18 @@ Window {
 
     // 当前文件夹数据对象
     property var folderData
+    property var folderSettingsHost
+    readonly property bool folderSettingsVisible: folderSettingsHost
+                                                  && folderSettingsHost.visible
+                                                  && folderSettingsHost.folderData === root.folderData
 
     property string folderName: folderData ? folderData.name : "开发工具"
     property bool nativeDropRegistered: false
 
-    FolderSettingsWindow {
-        id: folderSettingsWindow
-        folderData: root.folderData
-        transientParent: root
-        onVisibleChanged: {
-            if (!visible && !root.active && root.overflowExpanded)
+    Connections {
+        target: root.folderSettingsHost
+        function onVisibleChanged() {
+            if (!root.folderSettingsVisible && !root.active && root.overflowExpanded)
                 desktopCollapseTimer.restart();
         }
     }
@@ -26,20 +28,13 @@ Window {
         id: folderContextMenu
         popupType: Popup.Window
         MenuItem {
-            text: "溢出收纳模式"
-            checkable: true
-            checked: root.folderData && root.folderData.overflowMode
-            onTriggered: {
-                if (root.folderData) {
-                    root.folderData.overflowMode = checked;
-                    folderManager.save();
-                }
-            }
-        }
-        MenuItem {
             text: "文件夹设置"
             onTriggered: {
-                folderSettingsWindow.openForFolderWindow();
+                if (!root.folderSettingsHost)
+                    return;
+                root.folderSettingsHost.editingDefaults = false;
+                root.folderSettingsHost.folderData = root.folderData;
+                root.folderSettingsHost.openForFolderWindow(root);
             }
         }
     }
@@ -57,14 +52,16 @@ Window {
     property bool horizontalExpansion: expansionDirection === "left"
                                        || expansionDirection === "right"
     property bool overflowEnabled: folderData && folderData.overflowMode
-    property int compactVisibleCount: Math.max(1, configuredColumns * configuredRows - 1)
+    property int compactVisibleCount: Math.max(0, configuredColumns * configuredRows - 1)
     property int overflowClusterSlot: expansionDirection === "up"
                                       ? Math.max(0, configuredColumns - 1)
                                       : expansionDirection === "left"
                                         ? Math.max(0, (configuredRows - 1) * configuredColumns)
                                         : Math.max(0, configuredColumns * configuredRows - 1)
     property bool overflowExpanded: false
+    signal expansionRequested(var window)
     property bool iconContextMenuOpen: false
+    property int overflowPreviewRevision: 0
     property int totalItems: folderData ? folderData.itemCount : 0
     property bool hasOverflow: overflowEnabled && totalItems > compactVisibleCount
     property int collapsedSlots: Math.min(totalItems, compactVisibleCount) + (hasOverflow ? 1 : 0)
@@ -203,8 +200,15 @@ Window {
                                       targetWindowWidth, targetWindowHeight, 240);
     }
 
-    onTargetWindowWidthChanged: if (geometryReady) Qt.callLater(animateToTargetGeometry)
-    onTargetWindowHeightChanged: if (geometryReady) Qt.callLater(animateToTargetGeometry)
+    onTargetWindowWidthChanged: if (geometryReady) geometryUpdateTimer.restart()
+    onTargetWindowHeightChanged: if (geometryReady) geometryUpdateTimer.restart()
+
+    Timer {
+        id: geometryUpdateTimer
+        interval: 40
+        repeat: false
+        onTriggered: root.animateToTargetGeometry()
+    }
 
     onFrostedGlassEnabledChanged: Qt.callLater(applyWindowEffects)
     onLightThemeChanged: Qt.callLater(applyWindowEffects)
@@ -212,6 +216,7 @@ Window {
     onHasOverflowChanged: if (!hasOverflow) overflowExpanded = false
     onOverflowExpandedChanged: {
         if (overflowExpanded) {
+            root.expansionRequested(root);
             collapsedAnchorX = root.x;
             collapsedAnchorY = root.y;
             expansionAnchorRight = root.x + root.width;
@@ -222,7 +227,7 @@ Window {
             // Menus and the settings window are independent popup windows and
             // can still activate normally.
             if (typeof windowEffects !== "undefined")
-                windowEffects.sendToDesktopLayer(root);
+                windowEffects.raiseInDesktopLayer(root);
         }
         Qt.callLater(root.animateToTargetGeometry);
         geometrySettleTimer.restart();
@@ -252,8 +257,15 @@ Window {
             if (root.overflowExpanded
                     && !folderContextMenu.visible
                     && !root.iconContextMenuOpen
-                    && !folderSettingsWindow.visible)
+                    && !root.folderSettingsVisible)
                 root.overflowExpanded = false;
+        }
+    }
+
+    Connections {
+        target: root.folderData
+        function onItemsChanged() {
+            root.overflowPreviewRevision++;
         }
     }
 
@@ -265,7 +277,7 @@ Window {
             if (!root.active && root.overflowExpanded
                     && !folderContextMenu.visible
                     && !root.iconContextMenuOpen
-                    && !folderSettingsWindow.visible)
+                    && !root.folderSettingsVisible)
                 root.overflowExpanded = false;
         }
     }
@@ -450,7 +462,7 @@ Window {
                                    && root.activeExpansionDirection === "up"
                                    && root.hasCollapsedAnchor
                                    ? root.height - (root.expansionAnchorBottom - root.collapsedAnchorY) : 0
-                    draggable: !root.overflowEnabled
+                    draggable: true
                     onContextMenuOpenChanged: root.iconContextMenuOpen = contextMenuOpen
 
                     // 单击 / 右键菜单 → 打开文件
@@ -472,7 +484,25 @@ Window {
 
                     // 拖拽排序: 交换位置或移动到空位
                     onRequestMove: function (index, x, y) {
-                        folderData.moveItemToPosition(index, x, y);
+                        if (!root.overflowEnabled) {
+                            folderData.moveItemToPosition(index, x, y);
+                            return;
+                        }
+
+                        let column = Math.max(0, Math.min(root.layoutColumns - 1,
+                                          Math.round(x / root.layoutCellSize)));
+                        let row = Math.max(0, Math.min(root.layoutRows - 1,
+                                       Math.round(y / root.layoutVerticalCellSize)));
+                        let targetSlot = row * root.layoutColumns + column;
+                        let targetIndex = index;
+                        for (let candidate = 0; candidate < root.totalItems; ++candidate) {
+                            if (root.expandedSlotForIndex(candidate) === targetSlot) {
+                                targetIndex = candidate;
+                                break;
+                            }
+                        }
+                        if (targetIndex !== index)
+                            folderData.moveItem(index, targetIndex);
                     }
                 }
             }
@@ -494,12 +524,31 @@ Window {
                 border.color: root.lightTheme ? "#18000000" : "#28ffffff"
                 z: 50
 
+                Image {
+                    id: overflowCoverSource
+                    z: 5
+                    readonly property string configuredSource: root.folderData ? root.folderData.overflowCover : ""
+                    readonly property bool builtinCover: configuredSource.indexOf("assets/covers/") >= 0
+                    anchors.fill: parent
+                    anchors.margins: builtinCover ? root.layoutIconSize * 0.14 : 0
+                    source: builtinCover && root.lightTheme
+                            ? configuredSource.replace(".svg", "-light.svg")
+                            : configuredSource
+                    visible: source.toString() !== ""
+                    fillMode: Image.PreserveAspectCrop
+                    smooth: true
+                    mipmap: true
+                    clip: true
+                }
+
                 Repeater {
                     model: Math.min(4, Math.max(0, root.totalItems - root.compactVisibleCount))
                     Item {
                         required property int index
+                        visible: !root.folderData || root.folderData.overflowCover === ""
                         readonly property var overflowItem: root.folderData
-                                                            ? root.folderData.items.itemAt(root.compactVisibleCount + index)
+                                                            ? (root.overflowPreviewRevision,
+                                                               root.folderData.items.itemAt(root.compactVisibleCount + index))
                                                             : null
                         width: overflowCluster.width * 0.31
                         height: width
@@ -520,7 +569,7 @@ Window {
                             anchors.fill: overflowSourceIcon
                             sourceItem: overflowSourceIcon
                             hideSource: root.folderData && root.folderData.iconTone !== "original"
-                            live: true
+                            live: root.folderData && root.folderData.iconTone !== "original"
                             smooth: true
                         }
                         MultiEffect {

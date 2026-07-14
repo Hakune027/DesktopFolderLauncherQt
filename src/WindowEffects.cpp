@@ -3,6 +3,7 @@
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QtGlobal>
+#include <utility>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -125,12 +126,53 @@ void WindowEffects::sendToDesktopLayer(QWindow *window)
 {
     if (!window)
         return;
+    bool registered = false;
+    for (const QPointer<QWindow> &candidate : std::as_const(m_desktopWindows)) {
+        if (candidate == window) {
+            registered = true;
+            break;
+        }
+    }
+    if (!registered) {
+        m_desktopWindows.append(window);
+        connect(window, &QObject::destroyed, this, [this, window] {
+            for (qsizetype i = m_desktopWindows.size() - 1; i >= 0; --i) {
+                if (!m_desktopWindows.at(i) || m_desktopWindows.at(i) == window)
+                    m_desktopWindows.removeAt(i);
+            }
+        });
+    }
 #ifdef Q_OS_WIN
     SetWindowPos(reinterpret_cast<HWND>(window->winId()), HWND_BOTTOM,
                  0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
 #else
     window->lower();
+#endif
+}
+
+void WindowEffects::raiseInDesktopLayer(QWindow *window)
+{
+    if (!window)
+        return;
+
+    // Register the target and put the whole managed group behind ordinary
+    // applications. Moving the target to HWND_BOTTOM first and every sibling
+    // afterwards leaves the target highest inside this bottom-level group.
+    sendToDesktopLayer(window);
+#ifdef Q_OS_WIN
+    SetWindowPos(reinterpret_cast<HWND>(window->winId()), HWND_BOTTOM,
+                 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    for (const QPointer<QWindow> &candidate : std::as_const(m_desktopWindows)) {
+        if (!candidate || candidate == window)
+            continue;
+        SetWindowPos(reinterpret_cast<HWND>(candidate->winId()), HWND_BOTTOM,
+                     0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    }
+#else
+    window->raise();
 #endif
 }
 
