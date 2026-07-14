@@ -30,6 +30,10 @@ struct WindowCompositionAttributeData {
 using SetWindowCompositionAttributeFunction = BOOL(WINAPI *)(HWND, WindowCompositionAttributeData *);
 constexpr int WindowCompositionAttributeAccentPolicy = 19;
 constexpr DWORD DwmWindowCornerPreference = 33;
+constexpr DWORD DwmUseImmersiveDarkMode = 20;
+constexpr DWORD DwmBorderColor = 34;
+constexpr DWORD DwmCaptionColor = 35;
+constexpr DWORD DwmTextColor = 36;
 constexpr DWORD DwmSystemBackdropType = 38;
 constexpr DWORD DwmWindowCornerDefault = 0;
 constexpr DWORD DwmWindowCornerRound = 2;
@@ -41,7 +45,7 @@ constexpr DWORD DwmSystemBackdropTabbedWindow = 4;
 #endif
 
 bool WindowEffects::applyFrostedGlass(QWindow *window, bool enabled,
-                                      bool lightTheme)
+                                      bool lightTheme, bool windowShadow)
 {
 #ifdef Q_OS_WIN
     if (!window)
@@ -74,8 +78,33 @@ bool WindowEffects::applyFrostedGlass(QWindow *window, bool enabled,
     DwmSetWindowAttribute(hwnd, DwmSystemBackdropType,
                           &backdropType, sizeof(backdropType));
 
-    MARGINS margins = enabled ? MARGINS{-1, -1, -1, -1} : MARGINS{0, 0, 0, 0};
+    MARGINS margins = enabled && windowShadow
+            ? MARGINS{-1, -1, -1, -1} : MARGINS{0, 0, 0, 0};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
+
+    // Keep the native caption visually continuous with the QML surface while
+    // retaining Windows 11 snap layouts, system buttons and rounded corners.
+    const BOOL darkCaption = lightTheme ? FALSE : TRUE;
+    DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode,
+                          &darkCaption, sizeof(darkCaption));
+    constexpr COLORREF defaultCaptionColor = 0xFFFFFFFF;
+    // With the frame extended through the client area, asking DWM for its
+    // default caption material avoids painting a separate solid title strip.
+    // WS_CAPTION itself is retained, so native Windows transitions remain.
+    const COLORREF captionColor = enabled
+            ? defaultCaptionColor
+            : (lightTheme ? RGB(245, 245, 245) : RGB(23, 24, 29));
+    const COLORREF textColor = lightTheme ? RGB(24, 24, 24) : RGB(245, 245, 245);
+    // DWMWA_COLOR_NONE removes the bright one-pixel DWM outline. The glass
+    // surface still keeps its system shadow and rounded clipping.
+    constexpr COLORREF noBorderColor = 0xFFFFFFFE;
+    const COLORREF borderColor = enabled ? noBorderColor : captionColor;
+    DwmSetWindowAttribute(hwnd, DwmCaptionColor,
+                          &captionColor, sizeof(captionColor));
+    DwmSetWindowAttribute(hwnd, DwmTextColor,
+                          &textColor, sizeof(textColor));
+    DwmSetWindowAttribute(hwnd, DwmBorderColor,
+                          &borderColor, sizeof(borderColor));
 
     const DWORD cornerPreference = enabled ? DwmWindowCornerRound : DwmWindowCornerDefault;
     DwmSetWindowAttribute(hwnd, DwmWindowCornerPreference,
@@ -85,6 +114,7 @@ bool WindowEffects::applyFrostedGlass(QWindow *window, bool enabled,
     Q_UNUSED(window);
     Q_UNUSED(enabled);
     Q_UNUSED(lightTheme);
+    Q_UNUSED(windowShadow);
     return false;
 #endif
 }

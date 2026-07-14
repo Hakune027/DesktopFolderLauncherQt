@@ -6,6 +6,8 @@
 #include <QMenu>
 #include <QAction>
 #include <QStyle>
+#include <QQuickStyle>
+#include <QFont>
 #include "src/FolderManager.h"
 #include "src/DropHandler.h"
 #include "src/WindowEffects.h"
@@ -13,7 +15,10 @@
 int main(int argc, char *argv[])
 {
 
+    QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
+
     QApplication app(argc, argv);
+    app.setFont(QFont(QStringLiteral("Segoe UI Variable Text"), 10));
     app.setQuitOnLastWindowClosed(false);
 
     QQuickWindow::setDefaultAlphaBuffer(true);

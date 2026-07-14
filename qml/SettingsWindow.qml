@@ -1,17 +1,36 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Window
 
 Window {
     id: root
     objectName: "settingsWindow"
     transientParent: null
-
-    width: 500
-    height: 400
-
+    width: 680
+    height: 620
+    minimumWidth: 600
+    minimumHeight: 500
     visible: false
+    flags: Qt.Window
+    title: ""
+    color: Qt.rgba(0.055, 0.06, 0.075, 0.62)
+    palette.window: "#17181d"
+    palette.windowText: "#f5f5f5"
+    palette.base: "#23252b"
+    palette.text: "#f5f5f5"
+    palette.button: "#2c2e35"
+    palette.buttonText: "#f5f5f5"
+    palette.highlight: "#7b83ff"
+    palette.highlightedText: "white"
 
-    title: "DesktopFolderLauncher 设置"
+    function applyGlass() {
+        if (typeof windowEffects !== "undefined") {
+            windowEffects.applyFrostedGlass(root, root.visible, false);
+        }
+    }
+
+    onVisibleChanged: Qt.callLater(root.applyGlass)
 
     function syncVisibility() {
         if (folderManager.folderCount() === 0) {
@@ -23,74 +42,131 @@ Window {
         }
     }
 
-    Component.onCompleted: Qt.callLater(root.syncVisibility)
+    Component.onCompleted: {
+        Qt.callLater(root.syncVisibility);
+        Qt.callLater(root.applyGlass);
+    }
 
-
-    // 新建文件夹弹出对话框
     Dialog {
         id: newFolderDialog
-
         title: "新建文件夹"
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
-
         anchors.centerIn: parent
 
-        Column {
+        ColumnLayout {
+            width: 320
             spacing: 10
-
             Label {
-                text: "请输入文件夹名称:"
+                text: "为桌面文件夹输入一个名称"
+                color: "#b7b8c0"
+                Layout.fillWidth: true
             }
-
             TextField {
                 id: folderNameInput
-                width: 250
+                Layout.fillWidth: true
                 placeholderText: "文件夹名称"
+                selectByMouse: true
+                onAccepted: newFolderDialog.accept()
             }
         }
 
+        onOpened: {
+            folderNameInput.forceActiveFocus();
+            folderNameInput.selectAll();
+        }
         onAccepted: {
             let name = folderNameInput.text.trim();
-            if (name !== "") {
+            if (name !== "")
                 folderManager.createFolder(name);
-            }
-            folderNameInput.text = "";
+            folderNameInput.clear();
         }
-
-        onRejected: {
-            folderNameInput.text = "";
-        }
+        onRejected: folderNameInput.clear()
     }
 
-    Column {
-        anchors.centerIn: parent
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.leftMargin: 32
+        anchors.rightMargin: 32
+        anchors.topMargin: 32
+        anchors.bottomMargin: 32
         spacing: 20
 
-        Text {
-            text: "文件夹管理"
-            font.pixelSize: 30
-        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 14
 
-        Button {
-            text: "新增文件夹"
+            Rectangle {
+                width: 42
+                height: 42
+                radius: 10
+                color: "#e7e9ff"
+                Label {
+                    anchors.centerIn: parent
+                    text: "▦"
+                    color: "#4f5bd5"
+                    font.pixelSize: 22
+                    font.weight: Font.DemiBold
+                }
+            }
 
-            onClicked: {
-                newFolderDialog.open();
+            ColumnLayout {
+                spacing: 1
+                Label {
+                    text: "桌面文件夹"
+                    font.family: "Segoe UI Variable Display"
+                    font.pixelSize: 28
+                    font.weight: Font.DemiBold
+                }
+                Label {
+                    text: "管理文件夹、外观与窗口行为"
+                    color: "#b7b8c0"
+                    font.pixelSize: 13
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Button {
+                text: "+  新建文件夹"
+                highlighted: true
+                onClicked: newFolderDialog.open()
             }
         }
 
-        // 文件夹列表
-        ListView {
-            width: 460
-            height: 240
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: "#28ffffff"
+        }
 
+        Label {
+            text: "文件夹列表"
+            font.pixelSize: 14
+            font.weight: Font.DemiBold
+        }
+
+        ListView {
+            id: folderList
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 8
+            clip: true
             model: folderManager
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {}
 
             delegate: Rectangle {
-                width: 460
-                height: 88
-                color: "#eeeeee"
+                width: folderList.width - (folderList.ScrollBar.vertical.visible ? 12 : 0)
+                height: 94
+                radius: 10
+                color: rowHover.hovered ? "#70363a45" : "#5030343d"
+                border.width: 1
+                border.color: rowHover.hovered ? "#50ffffff" : "#28ffffff"
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                HoverHandler { id: rowHover }
 
                 FolderSettingsWindow {
                     id: perFolderSettings
@@ -98,49 +174,42 @@ Window {
                     transientParent: root
                 }
 
-                Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 12
+                    spacing: 12
 
-                    Row {
-                        width: parent.width
-                        height: 34
-                        spacing: 8
-
-                        Text {
-                            width: Math.max(80, parent.width - 142)
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: model.folderData.name
-                            font.pixelSize: 16
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
-                        }
-
-                        Button {
-                            text: "设置"
-                            width: 60
-                            height: 30
-                            onClicked: perFolderSettings.openForFolderWindow()
-                        }
-
-                        Button {
-                            text: "删除"
-                            width: 60
-                            height: 30
-                            onClicked: folderManager.removeFolder(index)
+                    Rectangle {
+                        width: 42
+                        height: 42
+                        radius: 9
+                        color: "#fff4ce"
+                        Label {
+                            anchors.centerIn: parent
+                            text: "□"
+                            color: "#8a6500"
+                            font.pixelSize: 21
                         }
                     }
 
-                    Row {
-                        height: 34
-                        spacing: 16
-
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 3
+                        Label {
+                            Layout.fillWidth: true
+                            text: model.folderData.name
+                            font.pixelSize: 15
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
+                        Label {
+                            text: model.folderData.itemCount + " 个项目"
+                            color: "#b7b8c0"
+                            font.pixelSize: 12
+                        }
                         CheckBox {
-                            text: "锁定位置"
+                            text: "锁定窗口位置"
                             checked: model.folderData.lockPosition
                             onClicked: {
                                 model.folderData.lockPosition = checked;
@@ -148,24 +217,28 @@ Window {
                             }
                         }
                     }
-                }
 
-                // 底部分隔线
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: 1
-                    color: "#cccccc"
+                    Button {
+                        text: "设置"
+                        onClicked: perFolderSettings.openForFolderWindow()
+                    }
+                    Button {
+                        text: "删除"
+                        flat: true
+                        onClicked: folderManager.removeFolder(index)
+                    }
                 }
             }
-        }
 
-        // 空状态提示
-        Text {
-            visible: folderManager.folderCount() === 0
-            text: "暂无文件夹, 点击上方按钮创建"
-            color: "#888888"
-            font.pixelSize: 14
+            Label {
+                anchors.centerIn: parent
+                visible: folderManager.folderCount() === 0
+                text: "还没有文件夹\n点击右上角创建第一个文件夹"
+                horizontalAlignment: Text.AlignHCenter
+                color: "#b7b8c0"
+                lineHeight: 1.5
+            }
         }
     }
+
 }

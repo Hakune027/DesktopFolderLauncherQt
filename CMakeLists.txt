@@ -77,7 +77,17 @@ qt_add_qml_module(
         qml/FolderSpawner.qml
 
         qml/FolderSettingsWindow.qml
+
 )
+
+# QML cache generation, moc and rcc expose many independent jobs. Let CMake
+# run those generators concurrently; the build command also uses --parallel.
+include(ProcessorCount)
+ProcessorCount(DESKTOP_FOLDER_BUILD_JOBS)
+if(NOT DESKTOP_FOLDER_BUILD_JOBS OR DESKTOP_FOLDER_BUILD_JOBS EQUAL 0)
+    set(DESKTOP_FOLDER_BUILD_JOBS 4)
+endif()
+set(CMAKE_AUTOGEN_PARALLEL ${DESKTOP_FOLDER_BUILD_JOBS})
 
 
 target_link_libraries(

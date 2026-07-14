@@ -10,5 +10,5 @@ public:
     explicit WindowEffects(QObject *parent = nullptr) : QObject(parent) {}
 
     Q_INVOKABLE bool applyFrostedGlass(QWindow *window, bool enabled,
-                                       bool lightTheme);
+                                       bool lightTheme, bool windowShadow = true);
 };

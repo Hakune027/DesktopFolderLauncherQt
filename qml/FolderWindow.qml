@@ -60,7 +60,7 @@ Window {
     visible: false
     opacity: 0
 
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint
 
     color: "transparent"
 
@@ -86,7 +86,7 @@ Window {
     function applyWindowEffects() {
         if (root.visible && typeof windowEffects !== "undefined")
             windowEffects.applyFrostedGlass(root, root.frostedGlassEnabled,
-                                            root.lightTheme);
+                                            root.lightTheme, false);
     }
 
     onFrostedGlassEnabledChanged: Qt.callLater(applyWindowEffects)
@@ -166,6 +166,7 @@ Window {
             border.color: root.lightTheme ? "#20ffffff" : "#16ffffff"
             visible: !root.frostedGlassEnabled && root.currentBorderStyle === "double"
         }
+
 
         TapHandler {
             acceptedButtons: Qt.RightButton
