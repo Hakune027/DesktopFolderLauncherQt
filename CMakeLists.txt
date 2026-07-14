@@ -51,6 +51,9 @@ qt_add_executable(
 
     src/FolderData.cpp
     src/FolderData.h
+
+    src/WindowEffects.cpp
+    src/WindowEffects.h
 )
 
 
@@ -89,7 +92,7 @@ target_link_libraries(
     Qt6::QuickControls2
 )
 if(WIN32)
-    target_link_libraries(DesktopFolderLauncher PRIVATE ole32 shell32)
+    target_link_libraries(DesktopFolderLauncher PRIVATE ole32 shell32 dwmapi)
 endif()
 
 install(TARGETS DesktopFolderLauncher

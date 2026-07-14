@@ -49,6 +49,7 @@ Window {
     property bool lightTheme: folderData && folderData.backgroundStyle === "white"
     property color foregroundColor: lightTheme ? "#E6202430" : "#F5FFFFFF"
     property color mutedColor: lightTheme ? "#991A1E28" : "#A8FFFFFF"
+    property bool frostedGlassEnabled: folderData && folderData.frostedGlass
 
     width: layoutGridWidth + layoutEdgePadding * 2
 
@@ -81,6 +82,15 @@ Window {
                                            area.y + Math.max(0, area.height - root.height)));
     }
 
+    function applyWindowEffects() {
+        if (root.visible && typeof windowEffects !== "undefined")
+            windowEffects.applyFrostedGlass(root, root.frostedGlassEnabled,
+                                            root.lightTheme);
+    }
+
+    onFrostedGlassEnabledChanged: Qt.callLater(applyWindowEffects)
+    onLightThemeChanged: Qt.callLater(applyWindowEffects)
+
     onScreenChanged: Qt.callLater(clampToAvailableScreen)
 
     // ====== 外部文件拖放接收层(最底层, Qt 内部 OLE 翻译) ======
@@ -112,16 +122,23 @@ Window {
 
         anchors.fill: parent
 
-        radius: root.folderData ? root.folderData.cornerRadius : 30
+        radius: root.frostedGlassEnabled ? 0
+                                         : (root.folderData ? root.folderData.cornerRadius : 30)
 
         color: {
+            if (root.frostedGlassEnabled) {
+                let glassTint = (root.folderData ? root.folderData.backgroundOpacity : 0.8) * 0.28;
+                return root.lightTheme
+                       ? Qt.rgba(1, 1, 1, glassTint)
+                       : Qt.rgba(0.04, 0.04, 0.055, glassTint);
+            }
             let opacity = root.folderData ? root.folderData.backgroundOpacity : 0.8;
             return root.folderData && root.folderData.backgroundStyle === "white"
                    ? Qt.rgba(1, 1, 1, opacity)
                    : Qt.rgba(0.125, 0.125, 0.125, opacity);
         }
 
-        border.width: 1
+        border.width: root.frostedGlassEnabled ? 0 : 1
 
         border.color: root.lightTheme ? "#26000000" : "#36ffffff"
 
@@ -313,6 +330,7 @@ Window {
             // 最终显示窗口(位置已确定, 不会闪烁)
             root.visible = true;
             windowEnterAnimation.start();
+            Qt.callLater(root.applyWindowEffects);
             Qt.callLater(root.clampToAvailableScreen);
             Qt.callLater(function() {
                 if (!root.nativeDropRegistered && root.folderData) {
@@ -352,5 +370,7 @@ Window {
             dropHandler.unregisterWindowTarget(root);
             root.nativeDropRegistered = false;
         }
+        if (typeof windowEffects !== "undefined")
+            windowEffects.applyFrostedGlass(root, false, root.lightTheme);
     }
 }

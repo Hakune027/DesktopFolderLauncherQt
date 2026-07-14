@@ -8,6 +8,7 @@
 #include <QStyle>
 #include "src/FolderManager.h"
 #include "src/DropHandler.h"
+#include "src/WindowEffects.h"
 
 int main(int argc, char *argv[])
 {
@@ -20,6 +21,7 @@ int main(int argc, char *argv[])
     FolderManager folderManager;
 
     DropHandler *dropHandler = new DropHandler(&app);
+    WindowEffects windowEffects;
 
     QQmlApplicationEngine engine;
 
@@ -32,6 +34,8 @@ int main(int argc, char *argv[])
         ->setContextProperty(
             "dropHandler",
             dropHandler);
+
+    engine.rootContext()->setContextProperty("windowEffects", &windowEffects);
 
     engine.loadFromModule(
         "DesktopFolderLauncher",

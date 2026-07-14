@@ -243,6 +243,7 @@ void FolderManager::load()
         folder->setShowIconShadow(obj.value("showIconShadow").toBool(true));
         folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
+        folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
 
         m_folders.append(folder);
     }
@@ -296,6 +297,7 @@ bool FolderManager::save()
         json["showIconShadow"] = folder->showIconShadow();
         json["allowIconGaps"] = folder->allowIconGaps();
         json["lockPosition"] = folder->lockPosition();
+        json["frostedGlass"] = folder->frostedGlass();
 
         qDebug()
             << "  "

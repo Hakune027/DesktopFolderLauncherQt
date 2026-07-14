@@ -89,6 +89,7 @@ bool FolderData::showIconNames() const { return m_showIconNames; }
 bool FolderData::showIconShadow() const { return m_showIconShadow; }
 bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
+bool FolderData::frostedGlass() const { return m_frostedGlass; }
 
 void FolderData::setCornerRadius(int value)
 {
@@ -212,6 +213,15 @@ void FolderData::setLockPosition(bool value)
     m_lockPosition = value;
     emit interactionChanged();
 }
+
+void FolderData::setFrostedGlass(bool value)
+{
+    if (m_frostedGlass == value)
+        return;
+    m_frostedGlass = value;
+    emit appearanceChanged();
+}
+
 
 void FolderData::setWindowPosition(
     int x,
