@@ -50,6 +50,7 @@ Window {
     property color foregroundColor: lightTheme ? "#E6202430" : "#F5FFFFFF"
     property color mutedColor: lightTheme ? "#991A1E28" : "#A8FFFFFF"
     property bool frostedGlassEnabled: folderData && folderData.frostedGlass
+    property string currentBorderStyle: folderData ? folderData.borderStyle : "subtle"
 
     width: layoutGridWidth + layoutEdgePadding * 2
 
@@ -138,9 +139,19 @@ Window {
                    : Qt.rgba(0.125, 0.125, 0.125, opacity);
         }
 
-        border.width: root.frostedGlassEnabled ? 0 : 1
+        border.width: {
+            if (root.frostedGlassEnabled || root.currentBorderStyle === "none")
+                return 0;
+            return root.currentBorderStyle === "accent" ? 2 : 1;
+        }
 
-        border.color: root.lightTheme ? "#26000000" : "#36ffffff"
+        border.color: {
+            if (root.currentBorderStyle === "accent")
+                return root.lightTheme ? "#785B6CFF" : "#A08D9AFF";
+            if (root.currentBorderStyle === "solid")
+                return root.lightTheme ? "#50000000" : "#70ffffff";
+            return root.lightTheme ? "#26000000" : "#36ffffff";
+        }
 
         Behavior on radius { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         Behavior on color { ColorAnimation { duration: 180 } }
@@ -153,6 +164,7 @@ Window {
             color: "transparent"
             border.width: 1
             border.color: root.lightTheme ? "#20ffffff" : "#16ffffff"
+            visible: !root.frostedGlassEnabled && root.currentBorderStyle === "double"
         }
 
         TapHandler {

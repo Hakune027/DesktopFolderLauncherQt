@@ -6,6 +6,7 @@ import QtQuick.Window
 Window {
     id: root
     property var folderData
+    property var borderStyleValues: ["none", "subtle", "solid", "accent", "double"]
 
     width: 420
     height: 650
@@ -93,6 +94,28 @@ Window {
                         text: Math.round(radiusSlider.value) + " px"
                         opacity: radiusSlider.enabled ? 1 : 0.45
                         Layout.preferredWidth: 52
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label {
+                        text: "边框样式"
+                        Layout.preferredWidth: 110
+                    }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        enabled: !root.folderData || !root.folderData.frostedGlass
+                        model: ["无边框", "轻描边", "实线", "强调色", "双层边框"]
+                        currentIndex: root.folderData
+                                      ? Math.max(0, root.borderStyleValues.indexOf(root.folderData.borderStyle)) : 1
+                        onActivated: function(index) {
+                            if (root.folderData)
+                                root.folderData.borderStyle = root.borderStyleValues[index];
+                            root.persist();
+                        }
+                        ToolTip.visible: hovered && !enabled
+                        ToolTip.text: "磨砂玻璃模式使用 Windows 系统窗口边缘"
                     }
                 }
 

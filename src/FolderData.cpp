@@ -2,6 +2,7 @@
 
 #include <QUuid>
 #include <QDebug>
+#include <QStringList>
 
 FolderData::FolderData(
     QString name,
@@ -90,6 +91,7 @@ bool FolderData::showIconShadow() const { return m_showIconShadow; }
 bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
 bool FolderData::frostedGlass() const { return m_frostedGlass; }
+QString FolderData::borderStyle() const { return m_borderStyle; }
 
 void FolderData::setCornerRadius(int value)
 {
@@ -219,6 +221,18 @@ void FolderData::setFrostedGlass(bool value)
     if (m_frostedGlass == value)
         return;
     m_frostedGlass = value;
+    emit appearanceChanged();
+}
+
+void FolderData::setBorderStyle(const QString &value)
+{
+    static const QStringList allowed = {QStringLiteral("none"), QStringLiteral("subtle"),
+                                        QStringLiteral("solid"), QStringLiteral("accent"),
+                                        QStringLiteral("double")};
+    const QString normalized = allowed.contains(value) ? value : QStringLiteral("subtle");
+    if (m_borderStyle == normalized)
+        return;
+    m_borderStyle = normalized;
     emit appearanceChanged();
 }
 

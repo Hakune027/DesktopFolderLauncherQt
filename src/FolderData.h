@@ -47,6 +47,7 @@ class FolderData : public QObject
     Q_PROPERTY(bool allowIconGaps READ allowIconGaps WRITE setAllowIconGaps NOTIFY appearanceChanged)
     Q_PROPERTY(bool lockPosition READ lockPosition WRITE setLockPosition NOTIFY interactionChanged)
     Q_PROPERTY(bool frostedGlass READ frostedGlass WRITE setFrostedGlass NOTIFY appearanceChanged)
+    Q_PROPERTY(QString borderStyle READ borderStyle WRITE setBorderStyle NOTIFY appearanceChanged)
 
 public:
     explicit FolderData(
@@ -83,6 +84,7 @@ public:
     bool allowIconGaps() const;
     bool lockPosition() const;
     bool frostedGlass() const;
+    QString borderStyle() const;
 
     void setCornerRadius(int value);
     void setBackgroundStyle(const QString &value);
@@ -98,6 +100,7 @@ public:
     void setAllowIconGaps(bool value);
     void setLockPosition(bool value);
     void setFrostedGlass(bool value);
+    void setBorderStyle(const QString &value);
 
     Q_INVOKABLE
     void setWindowPosition(
@@ -158,6 +161,7 @@ private:
     bool m_allowIconGaps = true;
     bool m_lockPosition = false;
     bool m_frostedGlass = false;
+    QString m_borderStyle = QStringLiteral("subtle");
 
     FileManager *m_fileManager;
 };
