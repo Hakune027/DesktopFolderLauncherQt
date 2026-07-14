@@ -84,6 +84,23 @@ Window {
 
                     itemIndex: index
 
+                    // 单击 / 右键菜单 → 打开文件
+                    onOpenRequest: {
+                        if (modelData) {
+                            modelData.open();
+                        }
+                    }
+
+                    // 右键菜单 → 打开文件位置
+                    onOpenLocationRequest: function (path) {
+                        folderData.openLocation(path);
+                    }
+
+                    // 右键菜单 → 删除
+                    onRemoveRequest: function (index) {
+                        folderData.removeFile(index);
+                    }
+
                     // 拖拽排序: 交换位置或移动到空位
                     onRequestMove: function (index, x, y) {
                         let items = folderData.items;

@@ -73,6 +73,10 @@ public:
         int index);
 
     Q_INVOKABLE
+    void openLocation(
+        QString path);
+
+    Q_INVOKABLE
     void save();
 
 signals:

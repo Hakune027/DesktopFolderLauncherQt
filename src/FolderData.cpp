@@ -109,6 +109,12 @@ void FolderData::removeFile(int index)
     m_fileManager->removeFile(index);
 }
 
+void FolderData::openLocation(QString path)
+{
+
+    m_fileManager->openLocation(path);
+}
+
 void FolderData::save()
 {
     m_fileManager->save();
