@@ -765,7 +765,7 @@ Window {
                                     StyledSlider {
                                         id: opacitySlider
                                         Layout.fillWidth: true
-                                        from: 0.1; to: 1.0; stepSize: 0.05
+                                        from: 0.0; to: 1.0; stepSize: 0.05
                                         value: root.folderData ? root.folderData.backgroundOpacity : 0.8
                                         onMoved: if (root.folderData) root.folderData.backgroundOpacity = value
                                         onPressedChanged: if (!pressed) root.persist()
@@ -832,6 +832,24 @@ Window {
                                             color: borderStyleCombo.enabled ? "#b7b8c0" : "#40b7b8c0"
                                             font.pixelSize: 10
                                         }
+                                    }
+                                }
+
+                                SettingRow {
+                                    title: "边框透明度"
+                                    StyledSlider {
+                                        id: borderOpacitySlider
+                                        Layout.fillWidth: true
+                                        from: 0.0; to: 1.0; stepSize: 0.05
+                                        value: root.folderData ? root.folderData.borderOpacity : 1.0
+                                        enabled: (!root.folderData || !root.folderData.frostedGlass)
+                                                 && (!root.folderData || root.folderData.borderStyle !== "none")
+                                        onMoved: if (root.folderData) root.folderData.borderOpacity = value
+                                        onPressedChanged: if (!pressed) root.persist()
+                                    }
+                                    SliderValue {
+                                        text: Math.round(borderOpacitySlider.value * 100) + "%"
+                                        opacity: borderOpacitySlider.enabled ? 1.0 : 0.35
                                     }
                                 }
                             }

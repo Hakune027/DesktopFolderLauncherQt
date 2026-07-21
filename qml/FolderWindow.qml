@@ -348,7 +348,7 @@ Window {
 
         color: {
             let configuredOpacity = root.folderData ? root.folderData.backgroundOpacity : 0.8;
-            let effectiveOpacity = root.overflowExpanded
+            let effectiveOpacity = root.overflowExpanded && configuredOpacity > 0
                     ? Math.max(configuredOpacity, 0.86) : configuredOpacity;
             if (root.frostedGlassEnabled) {
                 let glassTint = effectiveOpacity * (root.overflowExpanded ? 0.62 : 0.28);
@@ -368,11 +368,15 @@ Window {
         }
 
         border.color: {
+            let opacity = root.folderData ? root.folderData.borderOpacity : 1.0;
             if (root.currentBorderStyle === "accent")
-                return root.lightTheme ? "#785B6CFF" : "#A08D9AFF";
+                return root.lightTheme ? Qt.rgba(0.36, 0.42, 1.0, 0.47 * opacity)
+                                       : Qt.rgba(0.55, 0.60, 1.0, 0.63 * opacity);
             if (root.currentBorderStyle === "solid")
-                return root.lightTheme ? "#50000000" : "#70ffffff";
-            return root.lightTheme ? "#26000000" : "#36ffffff";
+                return root.lightTheme ? Qt.rgba(0, 0, 0, 0.31 * opacity)
+                                       : Qt.rgba(1, 1, 1, 0.44 * opacity);
+            return root.lightTheme ? Qt.rgba(0, 0, 0, 0.15 * opacity)
+                                   : Qt.rgba(1, 1, 1, 0.21 * opacity);
         }
 
         Behavior on radius { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -385,7 +389,11 @@ Window {
             radius: Math.max(0, folder.radius - 1)
             color: "transparent"
             border.width: 1
-            border.color: root.lightTheme ? "#20ffffff" : "#16ffffff"
+            border.color: {
+                let opacity = root.folderData ? root.folderData.borderOpacity : 1.0;
+                return root.lightTheme ? Qt.rgba(1, 1, 1, 0.13 * opacity)
+                                       : Qt.rgba(1, 1, 1, 0.09 * opacity);
+            }
             visible: !root.frostedGlassEnabled && root.currentBorderStyle === "double"
         }
 

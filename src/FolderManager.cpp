@@ -242,6 +242,7 @@ bool FolderManager::saveDefaults()
         object["lockPosition"] = folder->lockPosition();
         object["doubleClickToLaunch"] = folder->doubleClickToLaunch();
         object["borderStyle"] = folder->borderStyle();
+        object["borderOpacity"] = folder->borderOpacity();
         object["expansionDirection"] = folder->expansionDirection();
         object["overflowCover"] = folder->overflowCover();
     }
@@ -285,6 +286,7 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
         folder->setLockPosition(defaults->lockPosition());
         folder->setDoubleClickToLaunch(defaults->doubleClickToLaunch());
         folder->setBorderStyle(defaults->borderStyle());
+        folder->setBorderOpacity(defaults->borderOpacity());
         folder->setExpansionDirection(defaults->expansionDirection());
         folder->setOverflowCover(defaults->overflowCover());
         folder->endRestore();
@@ -313,6 +315,7 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
     folder->setLockPosition(object.value("lockPosition").toBool(false));
     folder->setDoubleClickToLaunch(object.value("doubleClickToLaunch").toBool(false));
     folder->setBorderStyle(object.value("borderStyle").toString("subtle"));
+    folder->setBorderOpacity(object.value("borderOpacity").toDouble(1.0));
     folder->setExpansionDirection(object.value("expansionDirection").toString("down"));
     folder->setOverflowCover(object.value("overflowCover").toString());
     folder->endRestore();
@@ -648,6 +651,7 @@ void FolderManager::load()
         folder->setDoubleClickToLaunch(obj.value("doubleClickToLaunch").toBool(false));
         folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
         folder->setBorderStyle(obj.value("borderStyle").toString("subtle"));
+        folder->setBorderOpacity(obj.value("borderOpacity").toDouble(1.0));
         folder->endRestore();
         trackFolder(folder);
 
@@ -707,6 +711,7 @@ bool FolderManager::save()
         json["doubleClickToLaunch"] = folder->doubleClickToLaunch();
         json["frostedGlass"] = folder->frostedGlass();
         json["borderStyle"] = folder->borderStyle();
+        json["borderOpacity"] = folder->borderOpacity();
         json["overflowMode"] = folder->overflowMode();
         json["expansionDirection"] = folder->expansionDirection();
         json["overflowCover"] = folder->overflowCover();

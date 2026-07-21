@@ -120,6 +120,7 @@ bool FolderData::lockPosition() const { return m_lockPosition; }
 bool FolderData::doubleClickToLaunch() const { return m_doubleClickToLaunch; }
 bool FolderData::frostedGlass() const { return m_frostedGlass; }
 QString FolderData::borderStyle() const { return m_borderStyle; }
+qreal FolderData::borderOpacity() const { return m_borderOpacity; }
 bool FolderData::overflowMode() const { return m_overflowMode; }
 QString FolderData::expansionDirection() const { return m_expansionDirection; }
 QString FolderData::overflowCover() const { return m_overflowCover; }
@@ -145,7 +146,7 @@ void FolderData::setBackgroundStyle(const QString &value)
 
 void FolderData::setBackgroundOpacity(qreal value)
 {
-    value = qBound(0.1, value, 1.0);
+    value = qBound(0.0, value, 1.0);
     if (qFuzzyCompare(m_backgroundOpacity, value))
         return;
     m_backgroundOpacity = value;
@@ -296,6 +297,15 @@ void FolderData::setBorderStyle(const QString &value)
     if (m_borderStyle == normalized)
         return;
     m_borderStyle = normalized;
+    emit appearanceChanged();
+}
+
+void FolderData::setBorderOpacity(qreal value)
+{
+    value = qBound(0.0, value, 1.0);
+    if (qFuzzyCompare(m_borderOpacity, value))
+        return;
+    m_borderOpacity = value;
     emit appearanceChanged();
 }
 

@@ -50,6 +50,7 @@ class FolderData : public QObject
     Q_PROPERTY(bool doubleClickToLaunch READ doubleClickToLaunch WRITE setDoubleClickToLaunch NOTIFY interactionChanged)
     Q_PROPERTY(bool frostedGlass READ frostedGlass WRITE setFrostedGlass NOTIFY appearanceChanged)
     Q_PROPERTY(QString borderStyle READ borderStyle WRITE setBorderStyle NOTIFY appearanceChanged)
+    Q_PROPERTY(qreal borderOpacity READ borderOpacity WRITE setBorderOpacity NOTIFY appearanceChanged)
     Q_PROPERTY(bool overflowMode READ overflowMode WRITE setOverflowMode NOTIFY appearanceChanged)
     Q_PROPERTY(QString expansionDirection READ expansionDirection WRITE setExpansionDirection NOTIFY appearanceChanged)
     Q_PROPERTY(QString overflowCover READ overflowCover WRITE setOverflowCover NOTIFY appearanceChanged)
@@ -93,6 +94,7 @@ public:
     bool doubleClickToLaunch() const;
     bool frostedGlass() const;
     QString borderStyle() const;
+    qreal borderOpacity() const;
     bool overflowMode() const;
     QString expansionDirection() const;
     QString overflowCover() const;
@@ -114,6 +116,7 @@ public:
     void setDoubleClickToLaunch(bool value);
     void setFrostedGlass(bool value);
     void setBorderStyle(const QString &value);
+    void setBorderOpacity(qreal value);
     void setOverflowMode(bool value);
     void setExpansionDirection(const QString &value);
     void setOverflowCover(const QString &value);
@@ -185,6 +188,7 @@ private:
     bool m_doubleClickToLaunch = false;
     bool m_frostedGlass = false;
     QString m_borderStyle = QStringLiteral("subtle");
+    qreal m_borderOpacity = 1.0;
     bool m_overflowMode = false;
     QString m_expansionDirection = QStringLiteral("down");
     QString m_overflowCover;
