@@ -16,15 +16,8 @@ Window {
         id: sharedFolderSettingsWindow
     }
 
-    FolderSettingsWindow {
-        id: defaultFolderSettingsWindow
-        folderData: folderManager.defaultFolderData
-        editingDefaults: true
-    }
-
     SettingsWindow {
         folderSettingsHost: sharedFolderSettingsWindow
-        defaultSettingsHost: defaultFolderSettingsWindow
     }
 
     FolderSpawner {

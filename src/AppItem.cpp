@@ -2,6 +2,12 @@
 
 #include <QDesktopServices>
 #include <QUrl>
+#include <QDir>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <shellapi.h>
+#endif
 
 AppItem::AppItem(
     QString name,
@@ -65,7 +71,15 @@ void AppItem::setY(int value)
 
 void AppItem::open()
 {
-
+#ifdef Q_OS_WIN
+    // ShellExecute resolves PIDL-backed Store application shortcuts whose
+    // .lnk file intentionally has no ordinary executable target path.
+    const std::wstring nativePath = QDir::toNativeSeparators(m_path).toStdWString();
+    const HINSTANCE result = ShellExecuteW(nullptr, L"open", nativePath.c_str(),
+                                           nullptr, nullptr, SW_SHOWNORMAL);
+    if (reinterpret_cast<INT_PTR>(result) > 32)
+        return;
+#endif
     QDesktopServices::openUrl(
         QUrl::fromLocalFile(
             m_path));

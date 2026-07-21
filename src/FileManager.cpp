@@ -20,6 +20,13 @@
 
 #include "IconProvider.h"
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <shlobj.h>
+#include <shobjidl.h>
+#include <shellapi.h>
+#endif
+
 namespace {
 bool iconIsReferencedByFolderConfig(const QString &iconUrl, const QString &foldersPath)
 {
@@ -39,6 +46,90 @@ bool iconIsReferencedByFolderConfig(const QString &iconUrl, const QString &folde
     }
     return false;
 }
+
+bool itemPathIsReferencedByFolderConfig(const QString &itemPath, const QString &foldersPath)
+{
+    const QFileInfoList configs = QDir(foldersPath).entryInfoList(
+        {QStringLiteral("*.json")}, QDir::Files | QDir::Readable);
+    for (const QFileInfo &config : configs) {
+        QFile file(config.absoluteFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+        for (const QJsonValue &value : document.array()) {
+            if (QDir::cleanPath(value.toObject().value(QStringLiteral("path")).toString())
+                    .compare(QDir::cleanPath(itemPath), Qt::CaseInsensitive) == 0)
+                return true;
+        }
+    }
+    return false;
+}
+
+void removeManagedShortcut(const QString &itemPath, const QString &foldersPath)
+{
+    QString dataDirectory = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+    if (dataDirectory.isEmpty())
+        dataDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    const QString shortcutRoot = QDir::cleanPath(
+        QDir(dataDirectory).filePath(QStringLiteral("shortcuts"))) + QDir::separator();
+    const QString absolutePath = QDir::cleanPath(QFileInfo(itemPath).absoluteFilePath());
+    if (absolutePath.startsWith(shortcutRoot, Qt::CaseInsensitive)
+        && QFileInfo(absolutePath).suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0
+        && !itemPathIsReferencedByFolderConfig(absolutePath, foldersPath)) {
+        QFile::remove(absolutePath);
+    }
+}
+
+#ifdef Q_OS_WIN
+bool openShortcutTargetLocation(const QString &shortcutPath)
+{
+    IShellLinkW *shellLink = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&shellLink))))
+        return false;
+
+    IPersistFile *persistFile = nullptr;
+    bool opened = false;
+    if (SUCCEEDED(shellLink->QueryInterface(IID_PPV_ARGS(&persistFile)))) {
+        const std::wstring nativeShortcut = QDir::toNativeSeparators(shortcutPath).toStdWString();
+        if (SUCCEEDED(persistFile->Load(nativeShortcut.c_str(), STGM_READ))) {
+            wchar_t targetPath[MAX_PATH] = {};
+            WIN32_FIND_DATAW findData = {};
+            if (SUCCEEDED(shellLink->GetPath(targetPath, MAX_PATH, &findData, SLGP_RAWPATH))
+                && targetPath[0] && QFileInfo::exists(QString::fromWCharArray(targetPath))) {
+                const QString arguments = QStringLiteral("/select,\"%1\"").arg(
+                    QDir::toNativeSeparators(QString::fromWCharArray(targetPath)));
+                const std::wstring nativeArguments = arguments.toStdWString();
+                opened = reinterpret_cast<INT_PTR>(ShellExecuteW(
+                    nullptr, L"open", L"explorer.exe", nativeArguments.c_str(),
+                    nullptr, SW_SHOWNORMAL)) > 32;
+            }
+
+            if (!opened) {
+                PIDLIST_ABSOLUTE targetIdList = nullptr;
+                if (SUCCEEDED(shellLink->GetIDList(&targetIdList)) && targetIdList) {
+                    PIDLIST_ABSOLUTE parent = ILCloneFull(targetIdList);
+                    PCUITEMID_CHILD child = ILFindLastID(targetIdList);
+                    if (parent && child && ILRemoveLastID(parent))
+                        opened = SUCCEEDED(SHOpenFolderAndSelectItems(parent, 1, &child, 0));
+                    if (parent)
+                        ILFree(parent);
+                    CoTaskMemFree(targetIdList);
+                }
+            }
+        }
+        persistFile->Release();
+    }
+    shellLink->Release();
+
+    if (!opened) {
+        opened = reinterpret_cast<INT_PTR>(ShellExecuteW(
+            nullptr, L"open", L"explorer.exe", L"shell:AppsFolder",
+            nullptr, SW_SHOWNORMAL)) > 32;
+    }
+    return opened;
+}
+#endif
 }
 
 FileManager::FileManager(QObject *parent)
@@ -452,6 +543,7 @@ void FileManager::removeFile(int index)
     }
 
     const QString removedIcon = m_items.at(index)->icon();
+    const QString removedPath = m_items.at(index)->path();
     QVector<QPoint> originalPositions;
     originalPositions.reserve(m_items.size());
     for (const AppItem *item : std::as_const(m_items))
@@ -480,6 +572,7 @@ void FileManager::removeFile(int index)
     const QFileInfo currentConfig(dataPath());
     if (!iconIsReferencedByFolderConfig(removedIcon, currentConfig.absolutePath()))
         IconProvider::removeCachedIcon(removedIcon);
+    removeManagedShortcut(removedPath, currentConfig.absolutePath());
 
     emit itemsChanged();
 }
@@ -491,6 +584,12 @@ void FileManager::openLocation(QString path)
 
     if (!info.exists())
         return;
+
+#ifdef Q_OS_WIN
+    if (info.suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0
+        && openShortcutTargetLocation(info.absoluteFilePath()))
+        return;
+#endif
 
     QDesktopServices::openUrl(
 

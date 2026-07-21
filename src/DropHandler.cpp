@@ -3,6 +3,78 @@
 #include <QDebug>
 #include <QMetaObject>
 #include <QUrl>
+#include <QFileInfo>
+#include <QScopedArrayPointer>
+#include <QStandardPaths>
+#include <QDir>
+#include <QCryptographicHash>
+#include <QRegularExpression>
+#include <shobjidl.h>
+
+namespace {
+FORMATETC shellIdListFormat()
+{
+    FORMATETC format = {};
+    format.cfFormat = static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_SHELLIDLIST));
+    format.dwAspect = DVASPECT_CONTENT;
+    format.lindex = -1;
+    format.tymed = TYMED_HGLOBAL;
+    return format;
+}
+
+QString materializeShellShortcut(PCIDLIST_ABSOLUTE absolute, IShellItem *shellItem)
+{
+    if (!absolute || !shellItem)
+        return {};
+
+    PWSTR displayName = nullptr;
+    QString name = QStringLiteral("Store App");
+    if (SUCCEEDED(shellItem->GetDisplayName(SIGDN_NORMALDISPLAY, &displayName))) {
+        name = QString::fromWCharArray(displayName).trimmed();
+        CoTaskMemFree(displayName);
+    }
+    name.replace(QRegularExpression(QStringLiteral("[<>:\"/\\\\|?*\\x00-\\x1f]")),
+                 QStringLiteral("_"));
+    if (name.isEmpty())
+        name = QStringLiteral("Store App");
+
+    QString dataDirectory = qEnvironmentVariable("DESK_FOLDER_DATA_DIR");
+    if (dataDirectory.isEmpty())
+        dataDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    const QString shortcutDirectory = QDir(dataDirectory).filePath(QStringLiteral("shortcuts"));
+    if (!QDir().mkpath(shortcutDirectory))
+        return {};
+
+    const UINT idListSize = ILGetSize(absolute);
+    const QByteArray idListBytes(reinterpret_cast<const char *>(absolute),
+                                 static_cast<qsizetype>(idListSize));
+    const QString hash = QString::fromLatin1(QCryptographicHash::hash(
+        idListBytes, QCryptographicHash::Sha256).toHex().left(16));
+    const QString shortcutPath = QDir(shortcutDirectory).filePath(
+        QStringLiteral("%1-%2.lnk").arg(name.left(80), hash));
+    if (QFileInfo::exists(shortcutPath))
+        return shortcutPath;
+
+    IShellLinkW *shellLink = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&shellLink))))
+        return {};
+    QString result;
+    if (SUCCEEDED(shellLink->SetIDList(absolute))) {
+        const std::wstring description = name.toStdWString();
+        shellLink->SetDescription(description.c_str());
+        IPersistFile *persistFile = nullptr;
+        if (SUCCEEDED(shellLink->QueryInterface(IID_PPV_ARGS(&persistFile)))) {
+            const std::wstring nativePath = QDir::toNativeSeparators(shortcutPath).toStdWString();
+            if (SUCCEEDED(persistFile->Save(nativePath.c_str(), TRUE)))
+                result = shortcutPath;
+            persistFile->Release();
+        }
+    }
+    shellLink->Release();
+    return result;
+}
+}
 
 DropHandler::DropHandler(QObject *parent)
     : QObject(parent)
@@ -250,7 +322,9 @@ HRESULT __stdcall DropHandler::DragEnter(
     fmt.lindex = -1;
     fmt.tymed = TYMED_HGLOBAL;
 
-    if (pDataObj->QueryGetData(&fmt) == S_OK)
+    FORMATETC shellFormat = shellIdListFormat();
+    if (pDataObj->QueryGetData(&fmt) == S_OK
+        || pDataObj->QueryGetData(&shellFormat) == S_OK)
     {
         *pdwEffect = DROPEFFECT_COPY;
     }
@@ -381,27 +455,64 @@ QStringList DropHandler::extractFilePaths(IDataObject *pDataObj)
 
     STGMEDIUM medium = {};
 
-    if (FAILED(pDataObj->GetData(&fmt, &medium)))
-    {
+    if (SUCCEEDED(pDataObj->GetData(&fmt, &medium))) {
+        HDROP hDrop = static_cast<HDROP>(medium.hGlobal);
+        const UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+        for (UINT i = 0; i < fileCount; ++i)
+        {
+            const UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
+            if (pathLen > 0) {
+                QScopedArrayPointer<wchar_t> buffer(new wchar_t[pathLen + 1]);
+                DragQueryFileW(hDrop, i, buffer.data(), pathLen + 1);
+                result.append(QString::fromWCharArray(buffer.data()));
+            }
+        }
+        ReleaseStgMedium(&medium);
+        if (!result.isEmpty())
+            return result;
+    }
+
+    // Store applications and some Start-menu shortcuts expose Shell ID lists
+    // instead of CF_HDROP, even when the visible item is a desktop .lnk file.
+    FORMATETC shellFormat = shellIdListFormat();
+    STGMEDIUM shellMedium = {};
+    if (FAILED(pDataObj->GetData(&shellFormat, &shellMedium)))
+        return result;
+
+    const auto *cida = static_cast<const CIDA *>(GlobalLock(shellMedium.hGlobal));
+    if (!cida) {
+        ReleaseStgMedium(&shellMedium);
         return result;
     }
-
-    HDROP hDrop = static_cast<HDROP>(medium.hGlobal);
-
-    UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
-
-    for (UINT i = 0; i < fileCount; ++i)
-    {
-        UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
-        if (pathLen > 0)
-        {
-            wchar_t *buffer = new wchar_t[pathLen + 1];
-            DragQueryFileW(hDrop, i, buffer, pathLen + 1);
-            result.append(QString::fromWCharArray(buffer));
-            delete[] buffer;
+    const auto *base = reinterpret_cast<const BYTE *>(cida);
+    const auto *parent = reinterpret_cast<PCIDLIST_ABSOLUTE>(base + cida->aoffset[0]);
+    for (UINT i = 0; i < cida->cidl; ++i) {
+        const auto *child = reinterpret_cast<PCUIDLIST_RELATIVE>(base + cida->aoffset[i + 1]);
+        PIDLIST_ABSOLUTE absolute = ILCombine(parent, child);
+        if (!absolute)
+            continue;
+        IShellItem *shellItem = nullptr;
+        if (SUCCEEDED(SHCreateItemFromIDList(absolute, IID_PPV_ARGS(&shellItem)))) {
+            bool itemAdded = false;
+            PWSTR displayName = nullptr;
+            if (SUCCEEDED(shellItem->GetDisplayName(SIGDN_FILESYSPATH, &displayName))) {
+                const QString path = QString::fromWCharArray(displayName);
+                if (QFileInfo::exists(path)) {
+                    result.append(path);
+                    itemAdded = true;
+                }
+                CoTaskMemFree(displayName);
+            }
+            if (!itemAdded) {
+                const QString shortcut = materializeShellShortcut(absolute, shellItem);
+                if (!shortcut.isEmpty())
+                    result.append(shortcut);
+            }
+            shellItem->Release();
         }
+        ILFree(absolute);
     }
-
-    ReleaseStgMedium(&medium);
+    GlobalUnlock(shellMedium.hGlobal);
+    ReleaseStgMedium(&shellMedium);
     return result;
 }

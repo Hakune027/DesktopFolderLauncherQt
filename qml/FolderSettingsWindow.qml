@@ -7,6 +7,13 @@ Window {
     id: root
     property var folderData
     property bool editingDefaults: false
+    property bool embedded: false
+    readonly property var settingsPages: [
+        { icon: "appearance", label: "外观", page: 0 },
+        { icon: "layout", label: "网格与尺寸", page: 1 },
+        { icon: "appearance", label: "图标与文字", page: 2 },
+        { icon: "behavior", label: "交互行为", page: 3 }
+    ]
     property var borderStyleValues: ["none", "subtle", "solid", "accent", "double"]
     property var expansionDirectionValues: ["down", "up", "right", "left"]
     property var overflowCoverValues: ["",
@@ -31,8 +38,8 @@ Window {
 
     width: 820
     height: 620
-    minimumWidth: 720
-    minimumHeight: 520
+    minimumWidth: embedded ? 0 : 720
+    minimumHeight: embedded ? 0 : 520
     visible: false
     flags: Qt.Window | Qt.FramelessWindowHint
     title: editingDefaults ? "新建文件夹默认设置"
@@ -48,6 +55,8 @@ Window {
     palette.highlightedText: "white"
 
     function applyGlass() {
+        if (root.embedded)
+            return;
         if (typeof windowEffects !== "undefined") {
             windowEffects.applyFrostedGlass(root, root.visible, false);
         }
@@ -446,8 +455,9 @@ Window {
         // ── Custom Title Bar ────────────────
         Rectangle {
             id: titleBar
+            visible: !root.embedded
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            Layout.preferredHeight: root.embedded ? 0 : 42
             color: "transparent"
 
             MouseArea {
@@ -516,8 +526,9 @@ Window {
 
         // ── Divider ────────────────────────
         Rectangle {
+            visible: !root.embedded
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
+            Layout.preferredHeight: root.embedded ? 0 : 1
             color: "#14ffffff"
         }
 
@@ -525,15 +536,16 @@ Window {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
-            Layout.topMargin: 14
-            Layout.bottomMargin: 16
+            Layout.leftMargin: root.embedded ? 0 : 16
+            Layout.rightMargin: root.embedded ? 0 : 16
+            Layout.topMargin: root.embedded ? 0 : 14
+            Layout.bottomMargin: root.embedded ? 0 : 16
             spacing: 12
 
             // ── Sidebar ──────────────────────
             Rectangle {
-                Layout.preferredWidth: 142
+                visible: !root.embedded
+                Layout.preferredWidth: root.embedded ? 0 : 142
                 Layout.fillHeight: true
                 color: "transparent"
 
@@ -543,7 +555,8 @@ Window {
 
                     // Subtitle
                     Label {
-                        text: "独立调整此桌面文件夹"
+                        text: root.editingDefaults ? "设置之后新建文件夹的默认值"
+                                                   : "独立调整此桌面文件夹"
                         color: "#7e7f88"
                         font.pixelSize: 12
                         Layout.leftMargin: 2
@@ -552,12 +565,7 @@ Window {
 
                     // Nav items
                     Repeater {
-                        model: [
-                            { icon: "appearance", label: "外观", page: 0 },
-                            { icon: "layout", label: "网格与尺寸", page: 1 },
-                            { icon: "appearance", label: "图标与文字", page: 2 },
-                            { icon: "behavior", label: "交互行为", page: 3 }
-                        ]
+                        model: root.settingsPages
 
                         delegate: Rectangle {
                             id: navItem
@@ -612,7 +620,8 @@ Window {
 
             // ── Separator ────────────────────
             Rectangle {
-                Layout.preferredWidth: 1
+                visible: !root.embedded
+                Layout.preferredWidth: root.embedded ? 0 : 1
                 Layout.fillHeight: true
                 Layout.topMargin: 8
                 Layout.bottomMargin: 8
@@ -620,12 +629,65 @@ Window {
             }
 
             // ── Content Area ─────────────────
-            StackLayout {
-                id: sidebarNav
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: 16
-                currentIndex: 0
+                Layout.leftMargin: root.embedded ? 0 : 16
+                spacing: 10
+
+                RowLayout {
+                    visible: root.embedded
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.embedded ? 42 : 0
+                    spacing: 6
+
+                    Repeater {
+                        model: root.settingsPages
+
+                        delegate: Rectangle {
+                            id: embeddedTab
+                            required property var modelData
+                            readonly property bool active: sidebarNav.currentIndex === modelData.page
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 38
+                            radius: 8
+                            color: active ? "#1a7b83ff"
+                                          : (embeddedTabHover.hovered ? "#0affffff" : "transparent")
+                            border.width: active ? 1 : 0
+                            border.color: "#207b83ff"
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
+                                FluentIcon {
+                                    name: embeddedTab.modelData.icon
+                                    Layout.preferredWidth: 17
+                                    Layout.preferredHeight: 17
+                                    opacity: embeddedTab.active ? 1 : 0.72
+                                }
+                                Label {
+                                    text: embeddedTab.modelData.label
+                                    color: embeddedTab.active ? "#f0f0f5" : "#a0a1ac"
+                                    font.pixelSize: 13
+                                    font.weight: embeddedTab.active ? Font.DemiBold : Font.Normal
+                                }
+                            }
+
+                            HoverHandler { id: embeddedTabHover }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: sidebarNav.currentIndex = embeddedTab.modelData.page
+                            }
+                        }
+                    }
+                }
+
+                StackLayout {
+                    id: sidebarNav
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentIndex: 0
 
                 // Page 0: Appearance
                 ScrollView {
@@ -1163,6 +1225,7 @@ Window {
                             }
                         }
                     }
+                }
                 }
             }
         }

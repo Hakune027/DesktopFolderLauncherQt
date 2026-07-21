@@ -35,6 +35,21 @@ QStringList cachedIconsFromFile(const QString &path)
     return icons;
 }
 
+QStringList itemPathsFromFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    QStringList paths;
+    for (const QJsonValue &value : document.array()) {
+        const QString itemPath = value.toObject().value(QStringLiteral("path")).toString();
+        if (!itemPath.isEmpty())
+            paths.append(itemPath);
+    }
+    return paths;
+}
+
 bool cachedIconIsReferenced(const QString &icon, const QString &foldersPath)
 {
     const QFileInfoList files = QDir(foldersPath).entryInfoList(
@@ -42,6 +57,20 @@ bool cachedIconIsReferenced(const QString &icon, const QString &foldersPath)
     for (const QFileInfo &file : files) {
         if (cachedIconsFromFile(file.absoluteFilePath()).contains(icon))
             return true;
+    }
+    return false;
+}
+
+bool itemPathIsReferenced(const QString &itemPath, const QString &foldersPath)
+{
+    const QFileInfoList files = QDir(foldersPath).entryInfoList(
+        {QStringLiteral("*.json")}, QDir::Files | QDir::Readable);
+    for (const QFileInfo &file : files) {
+        for (const QString &candidate : itemPathsFromFile(file.absoluteFilePath())) {
+            if (QDir::cleanPath(candidate).compare(QDir::cleanPath(itemPath),
+                                                    Qt::CaseInsensitive) == 0)
+                return true;
+        }
     }
     return false;
 }
@@ -417,6 +446,7 @@ void FolderManager::removeFolder(
         const QString dataFile = QDir(dir).filePath(
             QStringLiteral("folders/%1.json").arg(folder->folderId()));
         const QStringList cachedIcons = cachedIconsFromFile(dataFile);
+        const QStringList itemPaths = itemPathsFromFile(dataFile);
         QFile::remove(dataFile);
         QFile::remove(QDir(dir).filePath(folder->folderId() + QStringLiteral(".json")));
         QFile::remove(QDir(dir).filePath(folder->name() + QStringLiteral(".json")));
@@ -424,6 +454,16 @@ void FolderManager::removeFolder(
         for (const QString &icon : cachedIcons) {
             if (!cachedIconIsReferenced(icon, foldersPath))
                 IconProvider::removeCachedIcon(icon);
+        }
+        const QString shortcutRoot = QDir::cleanPath(
+            QDir(dir).filePath(QStringLiteral("shortcuts"))) + QDir::separator();
+        for (const QString &itemPath : itemPaths) {
+            const QString absolutePath = QDir::cleanPath(QFileInfo(itemPath).absoluteFilePath());
+            if (absolutePath.startsWith(shortcutRoot, Qt::CaseInsensitive)
+                && QFileInfo(absolutePath).suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0
+                && !itemPathIsReferenced(absolutePath, foldersPath)) {
+                QFile::remove(absolutePath);
+            }
         }
     }
 
