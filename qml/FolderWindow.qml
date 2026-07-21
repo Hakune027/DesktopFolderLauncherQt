@@ -28,6 +28,10 @@ Window {
         id: folderContextMenu
         popupType: Popup.Window
         MenuItem {
+            text: "重命名"
+            onTriggered: renameFolderDialog.open()
+        }
+        MenuItem {
             text: "文件夹设置"
             onTriggered: {
                 if (!root.folderSettingsHost)
@@ -36,6 +40,35 @@ Window {
                 root.folderSettingsHost.folderData = root.folderData;
                 root.folderSettingsHost.openForFolderWindow(root);
             }
+        }
+    }
+
+    Dialog {
+        id: renameFolderDialog
+        title: "重命名文件夹"
+        modal: true
+        popupType: Popup.Window
+        anchors.centerIn: parent
+        width: Math.min(360, root.width + 120)
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        contentItem: TextField {
+            id: renameFolderInput
+            width: renameFolderDialog.availableWidth
+            placeholderText: "文件夹名称"
+            selectByMouse: true
+            maximumLength: 80
+            onAccepted: renameFolderDialog.accept()
+        }
+
+        onOpened: {
+            renameFolderInput.text = root.folderData ? root.folderData.name : "";
+            renameFolderInput.forceActiveFocus();
+            renameFolderInput.selectAll();
+        }
+        onAccepted: {
+            if (root.folderData)
+                folderManager.renameFolder(root.folderData.folderId, renameFolderInput.text);
         }
     }
 

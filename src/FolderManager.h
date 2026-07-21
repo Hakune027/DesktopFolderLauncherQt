@@ -31,6 +31,9 @@ public:
         QString name);
 
     Q_INVOKABLE
+    bool renameFolder(const QString &folderId, QString name);
+
+    Q_INVOKABLE
     void removeFolder(
         int index);
 

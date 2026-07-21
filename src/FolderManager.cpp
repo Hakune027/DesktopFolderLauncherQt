@@ -410,6 +410,43 @@ void FolderManager::createFolder(
     emit foldersChanged();
 }
 
+bool FolderManager::renameFolder(const QString &folderId, QString name)
+{
+    name = name.trimmed();
+    if (folderId.isEmpty() || name.isEmpty() || name.size() > 80
+        || name.contains(QRegularExpression(QStringLiteral("[\\x00-\\x1f]"))))
+        return false;
+
+    FolderData *target = nullptr;
+    int targetIndex = -1;
+    for (int i = 0; i < m_folders.size(); ++i) {
+        FolderData *folder = m_folders.at(i);
+        if (folder && folder->folderId() == folderId) {
+            target = folder;
+            targetIndex = i;
+        } else if (folder && folder->name().compare(name, Qt::CaseInsensitive) == 0) {
+            return false;
+        }
+    }
+    if (!target)
+        return false;
+    if (target->name() == name)
+        return true;
+
+    const QString oldName = target->name();
+    const bool wasDirty = m_dirty;
+    target->setName(name);
+    m_dirty = true;
+    if (!save()) {
+        target->setName(oldName);
+        m_dirty = wasDirty;
+        return false;
+    }
+
+    emit dataChanged(index(targetIndex, 0), index(targetIndex, 0), {FolderRole});
+    return true;
+}
+
 void FolderManager::removeFolder(
     int index)
 {

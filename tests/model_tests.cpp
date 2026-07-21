@@ -49,6 +49,24 @@ private slots:
         manager.removeFolder(index.row());
     }
 
+    void folderCanBeRenamedAndNameRemainsUnique()
+    {
+        FolderManager manager;
+        manager.createFolder("Rename Source");
+        manager.createFolder("Rename Existing");
+        auto *folder = qobject_cast<FolderData *>(manager.folderAt(manager.rowCount() - 2));
+        QVERIFY(folder);
+
+        QVERIFY(manager.renameFolder(folder->folderId(), "  Renamed Folder  "));
+        QCOMPARE(folder->name(), QString("Renamed Folder"));
+        QVERIFY(!manager.renameFolder(folder->folderId(), "rename existing"));
+        QCOMPARE(folder->name(), QString("Renamed Folder"));
+        QVERIFY(!manager.renameFolder(folder->folderId(), "   "));
+
+        manager.removeFolder(manager.rowCount() - 1);
+        manager.removeFolder(manager.rowCount() - 1);
+    }
+
     void newFolderUsesSavedDefaults()
     {
         FolderManager manager;

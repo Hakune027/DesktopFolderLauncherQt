@@ -27,6 +27,8 @@ Window {
     property var folderSettingsHost
     property int pendingDeleteIndex: -1
     property string pendingDeleteName: ""
+    property string pendingRenameId: ""
+    property string pendingRenameName: ""
     property string persistenceErrorText: ""
 
     Connections {
@@ -181,6 +183,48 @@ Window {
         onRejected: {
             root.pendingDeleteIndex = -1;
             root.pendingDeleteName = "";
+        }
+    }
+
+    Dialog {
+        id: renameFolderDialog
+        title: "重命名文件夹"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        anchors.centerIn: parent
+        width: Math.min(420, root.width - 48)
+
+        contentItem: ColumnLayout {
+            width: renameFolderDialog.availableWidth
+            spacing: 12
+            Label {
+                text: "输入新的文件夹名称"
+                color: "#b7b8c0"
+                Layout.fillWidth: true
+            }
+            TextField {
+                id: renameFolderInput
+                Layout.fillWidth: true
+                placeholderText: "文件夹名称"
+                selectByMouse: true
+                maximumLength: 80
+                onAccepted: renameFolderDialog.accept()
+            }
+        }
+
+        onOpened: {
+            renameFolderInput.text = root.pendingRenameName;
+            renameFolderInput.forceActiveFocus();
+            renameFolderInput.selectAll();
+        }
+        onAccepted: {
+            folderManager.renameFolder(root.pendingRenameId, renameFolderInput.text);
+            root.pendingRenameId = "";
+            root.pendingRenameName = "";
+        }
+        onRejected: {
+            root.pendingRenameId = "";
+            root.pendingRenameName = "";
         }
     }
 
@@ -541,6 +585,24 @@ Window {
                     }
 
                     // Action buttons
+                    Button {
+                        id: renameBtn
+                        text: "重命名"
+                        font.pixelSize: 12
+                        Layout.preferredWidth: 68
+
+                        background: Rectangle {
+                            radius: 6
+                            color: renameBtn.hovered ? "#18ffffff" : "transparent"
+                        }
+
+                        onClicked: {
+                            root.pendingRenameId = model.folderData.folderId;
+                            root.pendingRenameName = model.folderData.name;
+                            renameFolderDialog.open();
+                        }
+                    }
+
                     Button {
                         id: settingsBtn
                         text: "设置"

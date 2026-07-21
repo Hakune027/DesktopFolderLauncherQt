@@ -50,6 +50,15 @@ QString FolderData::name() const
     return m_name;
 }
 
+void FolderData::setName(const QString &name)
+{
+    if (m_name == name)
+        return;
+    m_name = name;
+    m_fileManager->setFolderInfo(m_folderId, m_name);
+    emit nameChanged();
+}
+
 QString FolderData::folderId() const
 {
     return m_folderId;

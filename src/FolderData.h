@@ -13,7 +13,7 @@ class FolderData : public QObject
     Q_PROPERTY(
         QString name
             READ name
-                CONSTANT)
+                NOTIFY nameChanged)
 
     Q_PROPERTY(
         QString folderId
@@ -64,6 +64,7 @@ public:
         QObject *parent = nullptr);
 
     QString name() const;
+    void setName(const QString &name);
 
     QString folderId() const;
 
@@ -143,6 +144,7 @@ public:
     bool save();
 
 signals:
+    void nameChanged();
 
     void itemsChanged();
 
