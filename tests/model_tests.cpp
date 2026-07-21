@@ -112,6 +112,7 @@ private slots:
         defaults->setGridColumns(5);
         defaults->setGridRows(4);
         defaults->setIconSize(80);
+        defaults->setDoubleClickToLaunch(true);
         QCOMPARE(manager.defaultGridColumns(), 5);
         QCOMPARE(manager.defaultGridRows(), 4);
         QCOMPARE(manager.defaultIconSize(), 80);
@@ -122,6 +123,7 @@ private slots:
         QCOMPARE(folder->gridColumns(), 5);
         QCOMPARE(folder->gridRows(), 4);
         QCOMPARE(folder->iconSize(), 80);
+        QVERIFY(folder->doubleClickToLaunch());
         manager.removeFolder(manager.rowCount() - 1);
     }
 

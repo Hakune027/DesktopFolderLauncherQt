@@ -493,6 +493,8 @@ Window {
                                    && root.hasCollapsedAnchor
                                    ? root.height - (root.expansionAnchorBottom - root.collapsedAnchorY) : 0
                     draggable: true
+                    doubleClickToLaunch: root.folderData
+                                         ? root.folderData.doubleClickToLaunch : false
                     onContextMenuOpenChanged: root.iconContextMenuOpen = contextMenuOpen
 
                     // 单击 / 右键菜单 → 打开文件

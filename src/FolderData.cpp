@@ -117,6 +117,7 @@ bool FolderData::showIconBorder() const { return m_showIconBorder; }
 QString FolderData::iconTone() const { return m_iconTone; }
 bool FolderData::allowIconGaps() const { return m_allowIconGaps; }
 bool FolderData::lockPosition() const { return m_lockPosition; }
+bool FolderData::doubleClickToLaunch() const { return m_doubleClickToLaunch; }
 bool FolderData::frostedGlass() const { return m_frostedGlass; }
 QString FolderData::borderStyle() const { return m_borderStyle; }
 bool FolderData::overflowMode() const { return m_overflowMode; }
@@ -267,6 +268,14 @@ void FolderData::setLockPosition(bool value)
     if (m_lockPosition == value)
         return;
     m_lockPosition = value;
+    emit interactionChanged();
+}
+
+void FolderData::setDoubleClickToLaunch(bool value)
+{
+    if (m_doubleClickToLaunch == value)
+        return;
+    m_doubleClickToLaunch = value;
     emit interactionChanged();
 }
 

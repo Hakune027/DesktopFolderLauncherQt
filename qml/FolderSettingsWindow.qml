@@ -1079,6 +1079,25 @@ Window {
                                 spacing: 4
 
                                 SettingRow {
+                                    title: "双击启动"
+                                    Layout.preferredHeight: 32
+                                    ToggleSwitch {
+                                        checked: root.folderData
+                                                 && root.folderData.doubleClickToLaunch
+                                        onToggled: function(c) {
+                                            if (root.folderData)
+                                                root.folderData.doubleClickToLaunch = c;
+                                            root.persist();
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+
+                                InfoCallout {
+                                    calloutText: "**启动方式**  ·  开启后双击图标启动；关闭时保持单击启动。"
+                                }
+
+                                SettingRow {
                                     title: "允许空位"
                                     Layout.preferredHeight: 32
                                     ToggleSwitch {

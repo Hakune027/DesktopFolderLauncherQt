@@ -27,6 +27,7 @@ Item {
     property real layoutOffsetX: 0
     property real layoutOffsetY: 0
     property bool draggable: true
+    property bool doubleClickToLaunch: false
     readonly property bool contextMenuOpen: contextMenu.visible
     property real entryScale: 0.88
 
@@ -212,8 +213,8 @@ Item {
                 return;
 
             if (!wasDragged) {
-                // 左键单击 → 打开文件
-                appIcon.openRequest();
+                if (!appIcon.doubleClickToLaunch)
+                    appIcon.openRequest();
                 return;
             }
 
@@ -248,6 +249,12 @@ Item {
                         : Math.floor(appIcon.layoutIndex / Math.max(1, appIcon.layoutColumns)) * appIcon.verticalCellSize)
                         + appIcon.layoutOffsetY;
             });
+        }
+
+        onDoubleClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton && appIcon.doubleClickToLaunch
+                    && !wasDragged)
+                appIcon.openRequest();
         }
     }
 

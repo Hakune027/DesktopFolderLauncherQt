@@ -240,6 +240,7 @@ bool FolderManager::saveDefaults()
         object["iconTone"] = folder->iconTone();
         object["allowIconGaps"] = folder->allowIconGaps();
         object["lockPosition"] = folder->lockPosition();
+        object["doubleClickToLaunch"] = folder->doubleClickToLaunch();
         object["borderStyle"] = folder->borderStyle();
         object["expansionDirection"] = folder->expansionDirection();
         object["overflowCover"] = folder->overflowCover();
@@ -282,6 +283,7 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
         folder->setIconTone(defaults->iconTone());
         folder->setAllowIconGaps(defaults->allowIconGaps());
         folder->setLockPosition(defaults->lockPosition());
+        folder->setDoubleClickToLaunch(defaults->doubleClickToLaunch());
         folder->setBorderStyle(defaults->borderStyle());
         folder->setExpansionDirection(defaults->expansionDirection());
         folder->setOverflowCover(defaults->overflowCover());
@@ -309,6 +311,7 @@ void FolderManager::applyDefaultsToFolder(FolderData *folder) const
     folder->setIconTone(object.value("iconTone").toString("original"));
     folder->setAllowIconGaps(object.value("allowIconGaps").toBool(true));
     folder->setLockPosition(object.value("lockPosition").toBool(false));
+    folder->setDoubleClickToLaunch(object.value("doubleClickToLaunch").toBool(false));
     folder->setBorderStyle(object.value("borderStyle").toString("subtle"));
     folder->setExpansionDirection(object.value("expansionDirection").toString("down"));
     folder->setOverflowCover(object.value("overflowCover").toString());
@@ -642,6 +645,7 @@ void FolderManager::load()
         folder->setIconTone(obj.value("iconTone").toString("original"));
         folder->setAllowIconGaps(obj.value("allowIconGaps").toBool(true));
         folder->setLockPosition(obj.value("lockPosition").toBool(false));
+        folder->setDoubleClickToLaunch(obj.value("doubleClickToLaunch").toBool(false));
         folder->setFrostedGlass(obj.value("frostedGlass").toBool(false));
         folder->setBorderStyle(obj.value("borderStyle").toString("subtle"));
         folder->endRestore();
@@ -700,6 +704,7 @@ bool FolderManager::save()
         json["iconTone"] = folder->iconTone();
         json["allowIconGaps"] = folder->allowIconGaps();
         json["lockPosition"] = folder->lockPosition();
+        json["doubleClickToLaunch"] = folder->doubleClickToLaunch();
         json["frostedGlass"] = folder->frostedGlass();
         json["borderStyle"] = folder->borderStyle();
         json["overflowMode"] = folder->overflowMode();
